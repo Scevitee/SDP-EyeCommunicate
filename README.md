@@ -15,6 +15,7 @@ Access your virtual environment.
 ```source env/bin/activate```  
 
 If on Windows, run the following
+
 ```source env/Scripts/activate```  
 
 Install the current requirements
