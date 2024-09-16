@@ -11,9 +11,11 @@ For development, create a virtual environment using `venv` or `conda`, I use ven
 (Package I used for a test is incompatible with latest Python version, hence the Python3.11)
 
 Access your virtual environment.  
-*NOTE*: this command is different on Windows and I don't know what it is
 
 ```source env/bin/activate```  
+
+If on Windows, run the following
+```source env/Scripts/activate```  
 
 Install the current requirements
 
