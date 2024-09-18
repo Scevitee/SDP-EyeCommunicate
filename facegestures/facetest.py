@@ -139,6 +139,7 @@ while True:
         landmarks = face_utils.shape_to_np(landmarks)
         (x, y, w, h) = face_utils.rect_to_bb(face)
 
+        # check if in the calibration period of program
         if calibrating:
 
             cv2.putText(frame, "Calibrating", (x // 3, (y- (y//2))), 2, 2, 1, 2)
@@ -158,8 +159,12 @@ while True:
 
             cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 1)
 
+
             for (i, (x, y)) in enumerate(landmarks):
+                # draw circles at the position of the facial landmarks
                 cv2.circle(frame, (x, y), 1, (0, 255, 0), 1)
+
+                # draw the number corresponding the landmark position
                 # cv2.putText(frame, f"{i + 1}", (x, y), 1, .5, 1, 1)
 
             # Check for specific gestures
