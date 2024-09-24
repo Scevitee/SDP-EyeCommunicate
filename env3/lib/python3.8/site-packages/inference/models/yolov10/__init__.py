@@ -1,1 +1,0 @@
-from inference.models.yolov10.yolov10_object_detection import YOLOv10ObjectDetection
