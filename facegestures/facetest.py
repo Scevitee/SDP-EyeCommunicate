@@ -1,6 +1,3 @@
-# 1. Set up the environment
-# pip install opencv-python dlib face_recognition imutils
-
 import cv2
 import dlib
 import face_recognition
@@ -9,6 +6,7 @@ from imutils import face_utils
 from imutils.video import VideoStream
 import imutils
 import time
+from collections import deque
 
 # 2. Initialize the webcam
 cap = VideoStream(src=0).start()
@@ -17,18 +15,21 @@ cap = VideoStream(src=0).start()
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
 
-
-
-#instantiate some global vars
+# instantiate some global vars
 blink_counter = 0
 eyebrow_counter = 0
 ear_list = []
+# initialize queue with high values for the first few frames
+BLINK_QUEUE_SIZE = 8
 
+blink_queue = deque([1] * BLINK_QUEUE_SIZE, maxlen=BLINK_QUEUE_SIZE)
+
+buffer_frames = 0
+BUFFER_DURATION = 50  
 
 
 # Calculate average of LeftEye-EAR and RightEye-EAR
 def calculate_ear(face_landmarks):
-
     def eye_aspect_ratio(eye):
         # Compute the euclidean distances between the two sets of
         # vertical eye landmarks (x, y)-coordinates
@@ -59,20 +60,24 @@ def calculate_ear(face_landmarks):
 
 
 # 4. Define gesture detection functions
-def detect_blink(face_landmarks, eye_ar_threshold=0.155, eye_ar_consec_frames=7):
-    global blink_counter
+def detect_blink(face_landmarks, eye_ar_threshold):
+    global blink_counter, buffer_frames
     
     ear = calculate_ear(face_landmarks)
+    blink_queue.append(ear)
+    
+    if buffer_frames > 0:
+        buffer_frames -= 1
+        return False
 
-    # Check to see if the eye aspect ratio is below the blink threshold
-    if ear < eye_ar_threshold:
-        blink_counter += 1
 
-        if blink_counter >= eye_ar_consec_frames:
-            print(f"EAR: {ear}")
-            blink_counter = 0
-            return True
 
+    if np.mean(blink_queue) < eye_ar_threshold:
+        print(f"Blink detected! EAR: {np.mean(blink_queue)}")
+        buffer_frames = BUFFER_DURATION
+        return True
+
+    return False
 
 def detect_eyebrow_raise(face_landmarks, threshold=0.426, eyeb_raise_consec_frames=3):
     global eyebrow_counter
@@ -100,15 +105,6 @@ def detect_eyebrow_raise(face_landmarks, threshold=0.426, eyeb_raise_consec_fram
 
     brow_ratio = np.mean([left_br_ratio, right_br_ratio])
 
-    #  print(brow_ratio)
-
-    #  left_distance = np.linalg.norm(left_eyebrow[2] - left_eye[1])
-    #  right_distance = np.linalg.norm(right_eyebrow[2] - right_eye[2])
-
-    # Calculate the average distance
-    #  avg_distance = (left_distance + right_distance) / 2.0
-    # print(avg_distance)
-    # You might need to adjust this threshold based on your face size in the frame
     if brow_ratio > threshold:
         eyebrow_counter += 1
     else:
@@ -116,12 +112,11 @@ def detect_eyebrow_raise(face_landmarks, threshold=0.426, eyeb_raise_consec_fram
             return True
 
 
-
 # 5. Loop
 bct = 0
 calibrated_ear = 0
 ear_list = []
-calibration_time = 2  # seconds
+calibration_time = 2.5  # seconds
 start_time = time.time()
 calibrating = True
 
@@ -130,7 +125,7 @@ while True:
     frame = cap.read()
     frame = imutils.resize(frame, width=500)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.bilateralFilter(gray, 5, 10, 10)
+    gray = cv2.bilateralFilter(gray, 7, 20, 20)
     # Detect faces in the frame
     faces = detector(gray, 0)
 
@@ -143,7 +138,7 @@ while True:
         # check if in the calibration period of program
         if calibrating:
 
-            cv2.putText(frame, "Calibrating", (x // 3, (y- (y//2))), 2, 2, 1, 2)
+            cv2.putText(frame, "Calibrating", (x // 3, (y - (y // 2))), 2, 2, 1, 2)
 
             ear = calculate_ear(landmarks)
             ear_list.append(ear)
@@ -151,15 +146,13 @@ while True:
             if (time.time() - start_time) > calibration_time:
                 # choosing a low percentile instead of min() to protect against
                 # edge case of a blink during the calibration period
-                calibrated_ear = 0.7 * np.percentile(ear_list, 5)
+                calibrated_ear = 0.76 * np.percentile(ear_list, 5)
                 print(f"Calibrated EAR: {calibrated_ear}")
                 calibrating = False
 
         else:
-        
 
             cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 1)
-
 
             for (i, (x, y)) in enumerate(landmarks):
                 # draw circles at the position of the facial landmarks
@@ -169,9 +162,10 @@ while True:
                 # cv2.putText(frame, f"{i + 1}", (x, y), 1, .5, 1, 1)
 
             # Check for specific gestures
-            if detect_blink(landmarks, calibrated_ear):
+            if detect_blink(landmarks, calibrated_ear):  
                 bct += 1
-                print(f"Blink detected!  {bct}")
+                print(f"Blink count: {bct}")
+
 
             if detect_eyebrow_raise(landmarks):
                 # print('Eyebrow raise detected!')
@@ -187,5 +181,3 @@ while True:
 # 6. Clean up
 cv2.destroyAllWindows()
 cap.stop()
-
-
