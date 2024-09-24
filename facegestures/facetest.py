@@ -25,6 +25,7 @@ eyebrow_counter = 0
 ear_list = []
 
 
+
 # Calculate average of LeftEye-EAR and RightEye-EAR
 def calculate_ear(face_landmarks):
 
@@ -186,3 +187,5 @@ while True:
 # 6. Clean up
 cv2.destroyAllWindows()
 cap.stop()
+
+
