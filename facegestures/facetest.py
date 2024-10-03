@@ -60,6 +60,7 @@ BUFFER_DURATION = 20
 bct = 0
 calibrated_ear = 0
 ear_list = []
+<<<<<<< HEAD
 calibration_time = 2  # seconds
 start_time = time.time()
 
@@ -67,7 +68,12 @@ calibrating = True
 # Define a variable to keep track of the frames to display the message
 blink_display_frames = 0
 BLINK_DISPLAY_DURATION = 30  # Number of frames to show the "Blink detected" message
+=======
+calibration_time = 5  # seconds
+start_time = time.time()
+>>>>>>> d50777c9 (Added pose estimation demo)
 
+calibrating = True
 while True:
     frame = cap.read()
     frame = imutils.resize(frame, width=800)
