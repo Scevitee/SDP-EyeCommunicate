@@ -7,77 +7,8 @@ from imutils.video import VideoStream
 import imutils
 import time
 from collections import deque
+from gesture_helpers import *
 
-# 2. Initialize the webcam
-cap = VideoStream(src=0).start()
-
-# 3. Load the face detector and facial landmark predictor
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-
-# instantiate some global vars
-blink_counter = 0
-eyebrow_counter = 0
-ear_list = []
-# initialize queue with high values for the first few frames
-BLINK_QUEUE_SIZE = 8
-
-blink_queue = deque([1] * BLINK_QUEUE_SIZE, maxlen=BLINK_QUEUE_SIZE)
-
-buffer_frames = 0
-BUFFER_DURATION = 50  
-
-
-# Calculate average of LeftEye-EAR and RightEye-EAR
-def calculate_ear(face_landmarks):
-    def eye_aspect_ratio(eye):
-        # Compute the euclidean distances between the two sets of
-        # vertical eye landmarks (x, y)-coordinates
-        A = np.linalg.norm(eye[1] - eye[5])
-        B = np.linalg.norm(eye[2] - eye[4])
-
-        # Compute the euclidean distance between the horizontal
-        # eye landmark (x, y)-coordinates
-        C = np.linalg.norm(eye[0] - eye[3])
-
-        # Compute the eye aspect ratio
-        ear = (A + B) / (2.0 * C)
-        return ear
-
-    (lStart, lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
-    (rStart, rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
-    # Get the facial landmarks for the left and right eye
-    left_eye = face_landmarks[lStart:lEnd]
-    right_eye = face_landmarks[rStart:rEnd]
-
-    # Calculate the eye aspect ratio for both eyes
-    left_ear = eye_aspect_ratio(left_eye)
-    right_ear = eye_aspect_ratio(right_eye)
-
-    # Average the eye aspect ratio together for both eyes
-    avg_ear = (left_ear + right_ear) / 2.0
-    return avg_ear
-
-
-# 4. Define gesture detection functions
-def detect_blink(face_landmarks, eye_ar_threshold):
-    global blink_counter, buffer_frames
-    
-    ear = calculate_ear(face_landmarks)
-    blink_queue.append(ear)
-    
-    if buffer_frames > 0:
-        buffer_frames -= 1
-        return False
-
-
-
-    if np.mean(blink_queue) < eye_ar_threshold:
-        print(f"Blink detected! EAR: {np.mean(blink_queue)}")
-        buffer_frames = BUFFER_DURATION
-        return True
-
-    return False
 
 def detect_eyebrow_raise(face_landmarks, threshold=0.426, eyeb_raise_consec_frames=3):
     global eyebrow_counter
@@ -112,18 +43,31 @@ def detect_eyebrow_raise(face_landmarks, threshold=0.426, eyeb_raise_consec_fram
             return True
 
 
-# 5. Loop
+
+cap = VideoStream(src=0).start()
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+
+blink_counter = 0
+eyebrow_counter = 0
+
+BLINK_QUEUE_SIZE = 5
+blink_queue = deque([1] * BLINK_QUEUE_SIZE, maxlen=BLINK_QUEUE_SIZE)
+
+buffer_frames = 0
+BUFFER_DURATION = 20  
+
 bct = 0
 calibrated_ear = 0
 ear_list = []
-calibration_time = 2.5  # seconds
+calibration_time = 5  # seconds
 start_time = time.time()
-calibrating = True
 
+calibrating = True
 while True:
 
     frame = cap.read()
-    frame = imutils.resize(frame, width=500)
+    frame = imutils.resize(frame, width=800)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.bilateralFilter(gray, 7, 20, 20)
     # Detect faces in the frame
@@ -139,7 +83,6 @@ while True:
         if calibrating:
 
             cv2.putText(frame, "Calibrating", (x // 3, (y - (y // 2))), 2, 2, 1, 2)
-
             ear = calculate_ear(landmarks)
             ear_list.append(ear)
 
@@ -162,7 +105,8 @@ while True:
                 # cv2.putText(frame, f"{i + 1}", (x, y), 1, .5, 1, 1)
 
             # Check for specific gestures
-            if detect_blink(landmarks, calibrated_ear):  
+            blink_detected, buffer_frames, blink_queue = detect_blink(landmarks, calibrated_ear, blink_queue, buffer_frames, BUFFER_DURATION)
+            if blink_detected:  
                 bct += 1
                 print(f"Blink count: {bct}")
 
