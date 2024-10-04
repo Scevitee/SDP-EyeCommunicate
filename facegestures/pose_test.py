@@ -8,7 +8,6 @@ from collections import deque
 from gesture_helpers import *
 
 
-# Add these variables at the beginning of your script
 SHAKE_THRESHOLD = 4  # Number of direction changes to consider a head shake
 NOD_THRESHOLD = 4  # Number of direction changes to consider a nod
 TIME_WINDOW = 20     # Number of frames to consider for head shake detection
