@@ -11,3 +11,5 @@ pipeline = InferencePipeline.init(
 )
 pipeline.start()
 pipeline.join()
+
+
