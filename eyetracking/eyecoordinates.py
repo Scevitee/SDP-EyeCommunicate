@@ -119,6 +119,7 @@ def render_statistics(
         )
     return image
 
+
 # This is the modified function that we are using based on 'render_boxes'
 def render_boxes_with_info(
     predictions: Union[dict, List[Optional[dict]]],
@@ -308,11 +309,7 @@ def calibration(eye_predict, gaze_predict):
 def screen_coords(eye_predict, gaze_predict):
     if (len(eye_predict) == 4 and len(gaze_predict) == 4):
         eye_coords = trans_coords(eye_predict, gaze_predict)
-        # print(f"eye1: x:{eye_predict[0]}, y:{eye_predict[1]} gaze1:x:{gaze_predict[0]}, y:{gaze_predict[1]}")
-        # print(f"eye2: x:{eye_predict[2]}, y:{eye_predict[3]} gaze2:x:{gaze_predict[2]}, y:{gaze_predict[3]}")
 
-        # this is just for printing plan on deleting this so don't use these
-        print(f"x:{eye_coords[0]}, y:{eye_coords[1]}")
         if eye_coords[0] < xRef[4]:
             if eye_coords[1] < yRef[4]:
                 top_left(eye_coords[0], eye_coords[1])
