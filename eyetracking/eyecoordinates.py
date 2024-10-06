@@ -13,10 +13,7 @@ from datetime import datetime
 from functools import partial
 from typing import Callable, List, Optional, Tuple, Union
 
-<<<<<<< HEAD
 import pyautogui
-=======
->>>>>>> main
 import cv2
 import numpy as np
 import supervision as sv
@@ -30,11 +27,7 @@ from inference.core.interfaces.stream.utils import wrap_in_list
 from inference.core.utils.drawing import create_tiles
 from inference.core.utils.preprocess import letterbox_image
 
-<<<<<<< HEAD
 DEFAULT_BBOX_ANNOTATOR = sv.BoxAnnotator()
-=======
-DEFAULT_BBOX_ANNOTATOR = sv.BoundingBoxAnnotator()
->>>>>>> main
 DEFAULT_LABEL_ANNOTATOR = sv.LabelAnnotator()
 DEFAULT_FPS_MONITOR = sv.FPSMonitor()
 
@@ -173,21 +166,15 @@ def render_boxes_with_info(
             display_statistics=display_statistics,
             fps_value=fps_value,
         )
-<<<<<<< HEAD
 
         # Modified portion of the function
+        # Loop through predictions and print prediction info to terminal
         eye_predict = []
         gaze_predict = []
-=======
-        
-        # Modified portion of the function
->>>>>>> main
-        # Loop through predictions and print prediction info to terminal
         if isinstance(frame_prediction, dict) and 'predictions' in frame_prediction:
             for prediction in frame_prediction['predictions']:
                 x = prediction.get("x", 0)
                 y = prediction.get("y", 0)
-<<<<<<< HEAD
                 # width = prediction.get("width", 0)
                 # height = prediction.get("height", 0)
                 # confidence = prediction.get("confidence", 0)
@@ -235,23 +222,12 @@ def render_boxes_with_info(
             initialized = True
 
         screen_coords(eye_predict, gaze_predict)
-=======
-                width = prediction.get("width", 0)
-                height = prediction.get("height", 0)
-                confidence = prediction.get("confidence", 0)
-                class_name = prediction.get("class", "unknown")
-                
-                # Print details to terminal
-                print(f"Class: {class_name}, Confidence: {confidence:.2f}, (x: {x}, y: {y}, width: {width}, height: {height})")
-                
->>>>>>> main
         # End of modified code
         images.append((idx, image))
     if sequential_input_provided:
         on_frame_rendered((video_frame[0].source_id, images[0][1]))
     else:
         on_frame_rendered(images)
-<<<<<<< HEAD
 
 
 calibrate = False
@@ -273,24 +249,6 @@ def screenPoints():
     yCal_points = [height/2, height-50]
     # xCal_points = [50, width/2, width-50, 50, width/2, width-50, 50, width/2, width-50]
     # yCal_points = [50, 50, 50, height/2, height/2, height/2, height-50, height-50, height-50]
-    # xCal_points.append(50)
-    # yCal_points.append(50)
-    # xCal_points.append(width / 2)
-    # yCal_points.append(50)
-    # xCal_points.append(width - 50)
-    # yCal_points.append(50)
-    # xCal_points.append(50)
-    # yCal_points.append(height / 2)
-    # xCal_points.append(width / 2)
-    # yCal_points.append(height / 2)
-    # xCal_points.append(width - 50)
-    # yCal_points.append(height / 2)
-    # xCal_points.append(50)
-    # yCal_points.append(height - 50)
-    # xCal_points.append(width / 2)
-    # yCal_points.append(height - 50)
-    # xCal_points.append(width - 50)
-    # yCal_points.append(height - 50)
 
 
 def trans_coords(eye_predict, gaze_predict):
@@ -379,15 +337,3 @@ def bottom_right(x, y):
     xCoord = x * (xCal_points[1] / xRef[8])
     yCoord = y * (yCal_points[1] / yRef[8])
     print(f"Screen Coordinates: x:{xCoord}, y:{yCoord}")
-
-
-
-
-
-
-
-
-
-
-=======
->>>>>>> main
