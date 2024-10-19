@@ -97,9 +97,16 @@ while True:
         else:
             cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 1)
 
+
             for (i, (x, y)) in enumerate(landmarks):
                 # draw circles at the position of the facial landmarks
                 cv2.circle(frame, (x, y), 1, (0, 255, 0), 1)
+<<<<<<< HEAD
+=======
+
+                # draw the number corresponding the landmark position
+                # cv2.putText(frame, f"{i + 1}", (x, y), 1, .5, 1, 1)
+>>>>>>> 19c8d916 (Added some comments for clarity)
 
             # Check for specific gestures
             blink_detected, buffer_frames, blink_queue = detect_blink(landmarks, calibrated_ear, blink_queue, buffer_frames, BUFFER_DURATION)
