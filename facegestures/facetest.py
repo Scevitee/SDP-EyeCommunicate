@@ -7,41 +7,7 @@ from imutils.video import VideoStream
 import imutils
 import time
 from collections import deque
-from gesture_helpers import *
-
-
-def detect_eyebrow_raise(face_landmarks, threshold=0.426, eyeb_raise_consec_frames=3):
-    global eyebrow_counter
-
-    # Get the positions of the eyebrows and eyes
-    (leStart, leEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eyebrow"]
-    (reStart, reEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eyebrow"]
-    (lStart, lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
-    (rStart, rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
-    (nStart, nEnd) = face_utils.FACIAL_LANDMARKS_IDXS["nose"]
-
-    left_eyebrow = face_landmarks[leStart:leEnd]
-    right_eyebrow = face_landmarks[reStart:reEnd]
-    left_eye = face_landmarks[lStart:lEnd]
-    right_eye = face_landmarks[rStart:rEnd]
-    nose = face_landmarks[nStart:nEnd]
-
-    left_br_low = np.linalg.norm(left_eyebrow[2] - left_eye[3])
-    left_br_hi = np.linalg.norm(left_eyebrow[2] - nose[3])
-    left_br_ratio = left_br_low / left_br_hi
-
-    right_br_low = np.linalg.norm(right_eyebrow[2] - right_eye[0])
-    right_br_hi = np.linalg.norm(right_eyebrow[2] - nose[3])
-    right_br_ratio = right_br_low / right_br_hi
-
-    brow_ratio = np.mean([left_br_ratio, right_br_ratio])
-
-    if brow_ratio > threshold:
-        eyebrow_counter += 1
-    else:
-        if eyebrow_counter >= eyeb_raise_consec_frames:
-            return True
-
+from gestures import *
 
 
 cap = VideoStream(src=0).start()
@@ -60,7 +26,6 @@ BUFFER_DURATION = 20
 bct = 0
 calibrated_ear = 0
 ear_list = []
-<<<<<<< HEAD
 calibration_time = 2  # seconds
 start_time = time.time()
 
@@ -68,10 +33,6 @@ calibrating = True
 # Define a variable to keep track of the frames to display the message
 blink_display_frames = 0
 BLINK_DISPLAY_DURATION = 30  # Number of frames to show the "Blink detected" message
-=======
-calibration_time = 5  # seconds
-start_time = time.time()
->>>>>>> d50777c9 (Added pose estimation demo)
 
 calibrating = True
 while True:
@@ -107,12 +68,6 @@ while True:
             for (i, (x, y)) in enumerate(landmarks):
                 # draw circles at the position of the facial landmarks
                 cv2.circle(frame, (x, y), 1, (0, 255, 0), 1)
-<<<<<<< HEAD
-=======
-
-                # draw the number corresponding the landmark position
-                # cv2.putText(frame, f"{i + 1}", (x, y), 1, .5, 1, 1)
->>>>>>> 19c8d916 (Added some comments for clarity)
 
             # Check for specific gestures
             blink_detected, buffer_frames, blink_queue = detect_blink(landmarks, calibrated_ear, blink_queue, buffer_frames, BUFFER_DURATION)

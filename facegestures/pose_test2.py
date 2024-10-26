@@ -1,12 +1,21 @@
 import argparse
 import cv2
-import pose_service as service
+import pose as service
 import numpy as np
 import time
 from collections import deque
+import keyboard
+
+
+def change_pages():
+     keyboard.press_and_release('ctrl+alt+right')
+     time.sleep(3)
+     keyboard.press_and_release('ctrl+alt+left')
 
 
 def main(color=(224, 255, 255)):
+
+     keyboard.press_and_release('space')
 
      SHAKE_THRESHOLD = 3
      NOD_THRESHOLD = 3
@@ -17,16 +26,16 @@ def main(color=(224, 255, 255)):
      fd = service.UltraLightFaceDetection("models/RFB-320.tflite", conf_threshold=0.95)
      fa = service.DepthFacialLandmarks("models/sparse_face.tflite")
      cap = cv2.VideoCapture(0)
+
+     last_change_time = 0  # To track the last time the page was changed
+     cooldown_period = 5  # Cooldown period in seconds
      
-     start_time = time.time()
      while True:
           ret, frame = cap.read()
           if not ret:
                break
 
           boxes, score = fd.inference(frame)
-          # print(boxes)
-          
           feed = frame.copy()
           
           for results in fa.get_landmarks(feed, boxes):
@@ -42,11 +51,18 @@ def main(color=(224, 255, 255)):
                
                service.draw_shake_nod(frame, shake_detected, nod_detected)
           
+               current_time = time.time()
+               if shake_detected and not nod_detected:
+                    # Only invoke change_pages if cooldown period has passed
+                    if current_time - last_change_time > cooldown_period:
+                         change_pages()
+                         last_change_time = current_time  
+                    
   
           cv2.imshow("demo", frame)
           if cv2.waitKey(1) == ord('q'):
                break
-          
+
           
 if __name__ == '__main__':
     main()

@@ -7,7 +7,7 @@ import dlib
 from collections import deque
 import mediapipe as mp
 import time
-from gesture_helpers import *
+from gestures import *
 
 
 # Add these variables at the beginning of your script
