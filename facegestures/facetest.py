@@ -12,7 +12,7 @@ from gestures import *
 
 cap = VideoStream(src=0).start()
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("models/shape_predictor_68_face_landmarks.dat")
 
 blink_counter = 0
 eyebrow_counter = 0

@@ -1,6 +1,6 @@
 import argparse
 import cv2
-import pose as service
+from pose import pose as service
 import numpy as np
 import time
 from collections import deque
