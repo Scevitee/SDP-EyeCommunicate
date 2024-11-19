@@ -23,6 +23,29 @@ def dlib_to_dense(rects):
         arr[i] = [rect.left(), rect.top(), rect.right(), rect.bottom()]
     return arr
 
+def clamp(n, min, max): 
+    if n < min: 
+        return min
+    elif n > max: 
+        return max
+    else: 
+        return n 
+    
+# def change_sensitivity(shared_state, var_name, amount, increase=True):
+#     # Get current value of the class variable
+#     current_value = getattr(shared_state, var_name)
+    
+#     # Check if the current value is a number (for incrementing)
+#     if isinstance(current_value, (int, float)):
+#         # Increment the variable by the specified amount (bound between 0-1)
+#         if increase:
+#             setattr(shared_state, var_name, round(clamp(current_value + amount, 0, 1), 4))
+#         else:
+#             setattr(shared_state, var_name, round(clamp(current_value - amount, 0, 1), 4))
+            
+#         print(f"{var_name}: {getattr(shared_state, var_name)}")
+#     else:
+#         print(f"Error: {var_name} is not a number and cannot be incremented.")
 
 """
      HEADPOSE ESTIMATION

@@ -118,7 +118,7 @@ def pose(frame, results, color):
 # Returns (horizontal, vertical) values, 
     # for horiz: -1 = left, 0 = center, 1 = right | 
     # for vert: -1 = down, 0 = center, 1 = up
-def get_gaze_direction(frame, results, thresholds=(15, -15, 15, -10)):
+def get_gaze_direction(frame, results, thresholds=(15, -15, 17, -10)):
     
     (left_thresh, right_thresh, up_thresh, down_thresh) = thresholds
     

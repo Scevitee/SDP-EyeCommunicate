@@ -6,16 +6,11 @@ import time
 import keyboard
 import threading
 import pose as service
+from dataclasses import dataclass
 from imutils import face_utils
 from imutils.video import VideoStream
 from collections import deque
 from gestures import *
-
-def change_pages():
-    keyboard.press_and_release('ctrl+alt+right')
-    time.sleep(3)
-    keyboard.press_and_release('ctrl+alt+left')
-
 
 # This class holds all the data that the different processes need to access, share, and modify
 # May be more appropriate to use a @dataclass object 
@@ -30,6 +25,10 @@ class SharedState:
         self.blink_display_frames = 0
         self.BLINK_BUFFER_DURATION = 20
         self.blink_buffer_frames = 0
+        
+        # Eyebrow raise detection variables
+        self.eyebrow_counter = 0
+        self.EYEBROW_THRESHOLD = 0.8
 
         # Calibration variables
         self.calibration_time = 2  # seconds
@@ -54,6 +53,13 @@ class SharedState:
 
         # Lock for thread synchronization
         self.lock = threading.Lock()
+
+
+def change_pages():
+    keyboard.press_and_release('ctrl+alt+right')
+    time.sleep(3)
+    keyboard.press_and_release('ctrl+alt+left')
+    
         
 # Function for everything 'landmark related' (face detection, blink detection, eyebrow raise detection)
 def face_and_blink_detection(frame, gray, shared_state, detector, predictor):
@@ -66,7 +72,8 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor):
     # Loop through each face found
     for face in shared_state.dlib_faces:
         # Get facial landmarks
-        landmarks = predictor(frame, face)
+        landmarks = predictor(gray, face)
+        # landmarks = predictor(frame, face)
         landmarks = face_utils.shape_to_np(landmarks)
         (x, y, w, h) = face_utils.rect_to_bb(face)
 
@@ -97,12 +104,19 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor):
             if blink_detected:
                 shared_state.blink_counter += 1
                 shared_state.blink_display_frames = shared_state.BLINK_DISPLAY_DURATION
+                
+            # eyebrow raise detection
+            eyebrow_raised = detect_eyebrow_raise(landmarks, shared_state)
+            if eyebrow_raised:
+                print("Eyebrow raised!")
+                
 
     # Display "Blink detected" message
     if shared_state.blink_display_frames > 0:
         with shared_state.lock:
             cv2.putText(frame, "Blink detected", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         shared_state.blink_display_frames -= 1
+
 
 # Func for everything 'pose related' (pose estimation, gaze direction, shake/nod detection)
 def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color):
@@ -116,6 +130,7 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color):
 
         # Get gaze directions
         gaze_horiz, gaze_vert = service.get_gaze_direction(frame, results)
+        
         shared_state.shake_history.append(gaze_horiz)
         shared_state.nod_history.append(gaze_vert)
 
@@ -134,6 +149,7 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color):
                 # change_pages()
                 shared_state.last_change_time = current_time
 
+
 def main(color=(224, 255, 255)):
     # Video capture
     cap = cv2.VideoCapture(0)
@@ -143,7 +159,7 @@ def main(color=(224, 255, 255)):
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor("models/shape_predictor_68_face_landmarks.dat")
     # Pose estimation predictor 
-        # Currently implemented to utilize the dlib detector (may not be needed now that we have multiprocessing working)
+        # Currently implemented to utilize the dlib detector (may not be needed now that we have multithreading working)
     fa = service.DepthFacialLandmarks("models/sparse_face.tflite")
 
     # Create a shared state. Consider changing to @dataclass object 
@@ -172,13 +188,32 @@ def main(color=(224, 255, 255)):
         t1.join()
         t2.join()
 
-        # Display the frame
-        cv2.imshow("demo", frame)
-        if cv2.waitKey(1) == ord('q'):
+        # key = cv2.waitKey(1) 
+        # if key == ord('p'):  # 'p' key to increment EYEBROW_THRESHOLD
+        #     change_sensitivity(shared_state, 'EYEBROW_THRESHOLD', 0.005)
+            
+        # elif key == ord('o'):  # 'o' key to decrement EYEBROW_THRESHOLD
+        #     change_sensitivity(shared_state, 'EYEBROW_THRESHOLD', 0.005, increase=False)
+        
+        # elif key == ord('q'):
+        #     break
+        
+        if keyboard.is_pressed('p'):  # 'p' key to increment EYEBROW_THRESHOLD
+            change_sensitivity(shared_state, 'EYEBROW_THRESHOLD', 0.005)
+        elif keyboard.is_pressed('o'):  # 'o' key to decrement EYEBROW_THRESHOLD
+            change_sensitivity(shared_state, 'EYEBROW_THRESHOLD', 0.005, increase=False)
+        elif keyboard.is_pressed('q'):
             break
+
+        # Display the 
+        # cv2.waitKey(1)
+        # cv2.imshow("demo", frame)
+        
+        
 
     cap.release()
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
+
