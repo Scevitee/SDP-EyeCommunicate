@@ -15,7 +15,7 @@ def generate_image(input_path, output_path, prompt):
     pipe.set_vae("models/sdxl.vae.safetensors")
 
     # Generate image
-    output = pipe.generate_img2img(init_image=input_image, prompt=prompt, height=500, width=500, steps=15)
+    output = pipe.generate_img2img(init_image=input_image, prompt=prompt, height=400, width=400, steps=15)
     output[0].save(output_path)
 
 if __name__ == "__main__":
