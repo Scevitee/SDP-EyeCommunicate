@@ -3,6 +3,7 @@ import numpy as np
 
 from .ULFD import UltraLightFaceDetection
 from .DFL import DepthFacialLandmarks
+from .pose_related_detections import *
 
 def rotationMatrixToEulerAngles(R):
     '''
@@ -111,7 +112,6 @@ def pose(frame, results, color):
    
    
 
-   
 # Determines gaze direction based on yaw and pitch
 # Takes in the current frame and face mesh results, optional param to adjust thresholds
     # Threshold format: (left_thresh, right_thresh, up_thresh, down_thresh)
@@ -180,22 +180,3 @@ def draw_gaze_direction(frame, results):
 
     cv2.putText(frame, f"Horizontal: {horiz_text}", (text_x_horiz, text_y_horiz), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
     cv2.putText(frame, f"Vertical: {vert_text}", (text_x_horiz, test_y_vert), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
-
-def detect_shake_nod(gaze_history, shake_threshold, time_window):
-    if len(gaze_history) < time_window:
-        return False
-    
-    # For a set number of stored frames, check the total times the head position changes from left<->right or up<->down
-    direction_changes = sum(1 for i in range(1, len(gaze_history)) if gaze_history[i] != gaze_history[i-1] and gaze_history[i] != 0)
-    
-    return direction_changes >= shake_threshold
-
-
-def draw_shake_nod(frame, shake_detected, nod_detected):
-
-    if shake_detected:
-        cv2.putText(frame, "Head Shake Detected!", (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-    if nod_detected:
-        cv2.putText(frame, "Head Nod Detected!", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        

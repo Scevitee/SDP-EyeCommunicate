@@ -42,7 +42,7 @@ class SharedState:
         self.eyebrow_counter = 0
         self.EYEBROW_THRESHOLD = 0.475
         self.calibrated_eyebrow_distance = 0
-        self.EYEBROW_SCALAR = 1.275
+        self.EYEBROW_SCALAR = 1.3
         self.eyebrow_list = []
 
         # Calibration variables
@@ -50,17 +50,17 @@ class SharedState:
         self.calibrating = True
         self.ear_list = []
         self.start_time = time.time()
-        self.sensitivities = {"High":{"shake_threshold":2, "nod_threshold":2, "eyebrow_scalar":1.2, "ear_scalar":0.82}, 
-                              "Medium":{"shake_threshold":3, "nod_threshold":3, "eyebrow_scalar":1.275, "ear_scalar":0.76}, 
-                              "Low":{"shake_threshold":4, "nod_threshold":4, "eyebrow_scalar":1.65, "ear_scalar":0.70}}
+        self.sensitivities = {"High":{"shake_threshold":2, "nod_threshold":2, "eyebrow_scalar":1.2, "ear_scalar":0.82, "gaze_time_window":30}, 
+                              "Medium":{"shake_threshold":3, "nod_threshold":3, "eyebrow_scalar":1.3, "ear_scalar":0.76, "gaze_time_window":50}, 
+                              "Low":{"shake_threshold":4, "nod_threshold":4, "eyebrow_scalar":1.45, "ear_scalar":0.70, "gaze_time_window":70}}
 
         # Shake/Nod detection variables
         self.SHAKE_THRESHOLD = 3
         self.NOD_THRESHOLD = 3
-        self.SHAKE_NOD_TIME_WINDOW = 20
-        self.shake_history = deque(maxlen=self.SHAKE_NOD_TIME_WINDOW)
-        self.nod_history = deque(maxlen=self.SHAKE_NOD_TIME_WINDOW)
-
+        self.GAZE_TIME_WINDOW = 50
+        self.left_right_history = deque(maxlen=self.GAZE_TIME_WINDOW)
+        self.up_down_history = deque(maxlen=self.GAZE_TIME_WINDOW)
+        
         # Keyboard variables
         self.last_change_time = 0
         self.CHANGE_COOLDOWN_PERIOD = 5  # seconds
@@ -71,6 +71,7 @@ class SharedState:
         # Lock for thread synchronization
         self.lock = threading.Lock()
         
+        
     # Choose from some default sensitivity levels
     def setSensitivity(self, sensitivity):
         if sensitivity in self.sensitivities:
@@ -78,7 +79,13 @@ class SharedState:
             self.NOD_THRESHOLD = self.sensitivities[sensitivity]["nod_threshold"]
             self.EYEBROW_SCALAR = self.sensitivities[sensitivity]["eyebrow_scalar"]
             self.EAR_SCALAR = self.sensitivities[sensitivity]["ear_scalar"]
-            print(f"Sensitivity changed to {sensitivity}!")
+            self.GAZE_TIME_WINDOW = self.sensitivities[sensitivity["gaze_time_window"]]
+            # print(f"Sensitivity changed to {sensitivity}!")
+            # print(f"Shake Threshold: {self.SHAKE_THRESHOLD}")
+            # print(f"Nod Threshold: {self.NOD_THRESHOLD}")
+            # print(f"Eyebrow Scalar: {self.EYEBROW_SCALAR}")
+            # print(f"Ear Scalar: {self.EAR_SCALAR}")
+            # print()
         else:
             print(f"Invalid sensitivity level: {sensitivity}")
             
@@ -211,6 +218,24 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color=(224,
                                                   shared_state.SHAKE_NOD_TIME_WINDOW)
         nod_detected = service.detect_shake_nod(shared_state.nod_history, shared_state.NOD_THRESHOLD,
                                                 shared_state.SHAKE_NOD_TIME_WINDOW)
+
+
+        # TODO Add buffer period so you don't get a bunch of continuous detections
+        look_left_detected = service.detect_look_left_right(shared_state.left_right_history, 'left')
+        look_right_detected = service.detect_look_left_right(shared_state.left_right_history, 'right')
+        
+        look_up_detected = service.detect_look_up_down(shared_state.up_down_history, 'up')
+        look_down_detected = service.detect_look_up_down(shared_state.up_down_history, 'down')
+        
+        if look_left_detected:
+            print("LOOKING LEFT")
+        if look_right_detected:
+            print("LOOKING RIGHT")
+        if look_up_detected:
+            print("LOOKING UP")
+        if look_down_detected:
+            print("LOOKING DOWN")
+
 
         with shared_state.lock:
             service.draw_shake_nod(frame, shake_detected, nod_detected)
