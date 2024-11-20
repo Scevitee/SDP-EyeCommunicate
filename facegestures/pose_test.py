@@ -5,7 +5,9 @@ from imutils.video import VideoStream
 import imutils
 import dlib
 from collections import deque
-from gesture_helpers import *
+import mediapipe as mp
+import time
+from gestures import *
 
 
 # Add these variables at the beginning of your script
@@ -18,6 +20,15 @@ nod_history = deque(maxlen=TIME_WINDOW)
 cap = VideoStream(src=0).start()
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+mp_face_mesh = mp.solutions.face_mesh
+
+face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=False,
+    max_num_faces=2,
+    refine_landmarks=True,  # This adds iris landmarks
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5)
+
 
 # These are the 3D points of the face landmarks. These are approximations.
 # Should look into ways to get better estimates of the 3D points -- may improve accuracy -- further testing needed to determine if this is necessary
@@ -30,10 +41,16 @@ model_points = np.array([
     (150.0, -150.0, -125.0)      # Right mouth corner
 ])
 
+model_list = []
+
+calibrating = True
+calibration_time = 3
+start_time = time.time()
+
 while True:
     frame = cap.read()
-    frame = imutils.resize(frame, width=1200)
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    frame = imutils.resize(frame, width=700)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     size = frame.shape
     
@@ -46,11 +63,18 @@ while True:
         [0, 0, 1]], dtype = "double"
     )
 
+    mp_results = face_mesh.process(frame)
+    if mp_results.multi_face_landmarks:
+        for mp_landmarks in mp_results.multi_face_landmarks:
+            model_points = get_mp_model_points(mp_landmarks, size)
+            print(f"Model Points: {model_points}")
+
     for face in detector(gray, 0):
         landmarks = predictor(gray, face)
         landmarks = face_utils.shape_to_np(landmarks)
 
         headpose_points = get_headpose_points(landmarks)
+        print(f"Headpose Points: {headpose_points}")
 
         dist_coeffs = np.zeros((4,1))
         (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, headpose_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
