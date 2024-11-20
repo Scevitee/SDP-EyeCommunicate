@@ -1,9 +1,10 @@
+# main.py
 import cv2
 import dlib
 import numpy as np
 import imutils
 import time
-import keyboard
+# import keyboard
 import pyautogui
 import threading
 import facegestures.pose as service
@@ -13,7 +14,6 @@ from imutils.video import VideoStream
 from collections import deque
 from facegestures.gestures import *
 from eyetracking.eyegestures import EyeGestures_v2 
-
 
 """
     This is a copy of our main.py file from presentation 2, but without the webcam display.
@@ -76,6 +76,9 @@ class SharedState:
         # Lock for thread synchronization
         self.lock = threading.Lock()
         
+        # Universal buffer duration and counter
+        self.UNIVERSAL_BUFFER_DURATION = 50
+        self.universal_buffer_frames = 0
         
     # Choose from some default sensitivity levels
     def setSensitivity(self, sensitivity):
@@ -167,19 +170,25 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor):
                     landmarks, shared_state.calibrated_ear, shared_state.blink_history,
                     shared_state.blink_buffer_frames, shared_state.BLINK_BUFFER_DURATION
                 )
-                if blink_detected:
+                if blink_detected and shared_state.universal_buffer_frames == 0:
                     shared_state.blink_counter += 1
                     shared_state.blink_display_frames = shared_state.BLINK_DISPLAY_DURATION
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             # Eyebrow raise detection
             else:
                 eyebrow_raised = detect_eyebrow_raise(landmarks, shared_state)
-                if eyebrow_raised:
+                if eyebrow_raised and shared_state.universal_buffer_frames == 0:
                     print("Eyebrow raised!")
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
     # Decrease the blink display frame counter
     if shared_state.blink_display_frames > 0:
         shared_state.blink_display_frames -= 1
+
+    # Decrease the universal buffer frames
+    if shared_state.universal_buffer_frames > 0:
+        shared_state.universal_buffer_frames -= 1
 
 
 # Function for everything 'pose related' (pose estimation, gaze direction, shake/nod detection)
@@ -200,29 +209,41 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color=(224,
                                                 shared_state.GAZE_TIME_WINDOW)
 
         # Detect if holding left/right or up/down gaze
-        # TODO Add buffer period so you don't get a bunch of continuous detections
         look_left_detected = service.detect_look_left_right(shared_state.left_right_history, 'left')
         look_right_detected = service.detect_look_left_right(shared_state.left_right_history, 'right')
         
         look_up_detected = service.detect_look_up_down(shared_state.up_down_history, 'up')
         look_down_detected = service.detect_look_up_down(shared_state.up_down_history, 'down')
         
-        if look_left_detected:
-            print("LOOKING LEFT")
-        if look_right_detected:
-            print("LOOKING RIGHT")
-        if look_up_detected:
-            print("LOOKING UP")
-        if look_down_detected:
-            print("LOOKING DOWN")
+        # Only act if universal buffer is zero
+        if shared_state.universal_buffer_frames == 0:
+            if look_left_detected:
+                print("LOOKING LEFT")
+                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+            elif look_right_detected:
+                print("LOOKING RIGHT")
+                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+            elif look_up_detected:
+                print("LOOKING UP")
+                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+            elif look_down_detected:
+                print("LOOKING DOWN")
+                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+            elif shake_detected and not nod_detected:
+                # Handle shake detection
+                current_time = time.time()
+                if current_time - shared_state.last_change_time > shared_state.CHANGE_COOLDOWN_PERIOD:
+                    # Uncomment the following line to enable page change functionality
+                    # change_pages()
+                    shared_state.last_change_time = current_time
+                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+            elif nod_detected:
+                # Handle nod detection
+                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
-        # Perform action on shake detection
-        current_time = time.time()
-        if shake_detected and not nod_detected:
-            if current_time - shared_state.last_change_time > shared_state.CHANGE_COOLDOWN_PERIOD:
-                # Uncomment the following line to enable page change functionality
-                # change_pages()
-                shared_state.last_change_time = current_time
+    # Decrease the universal buffer frames
+    if shared_state.universal_buffer_frames > 0:
+        shared_state.universal_buffer_frames -= 1
 
 
 def main():
@@ -287,18 +308,18 @@ def main():
         t2.join()
         
         # Use keyboard module to detect key presses
-        if keyboard.is_pressed('p'):
-            shared_state.setSensitivity("High")
-        elif keyboard.is_pressed('o'):
-            shared_state.setSensitivity("Medium")
-        elif keyboard.is_pressed('i'):
-            shared_state.setSensitivity("Low")
-        elif keyboard.is_pressed('0'):
-            shared_state.tweakSensitivity('EYEBROW_SCALAR', 0.001)
-        elif keyboard.is_pressed('9'):
-            shared_state.tweakSensitivity('EYEBROW_SCALAR', 0.001, decrease=True)
-        elif keyboard.is_pressed('q'):
-            break
+        # if keyboard.is_pressed('p'):
+        #     shared_state.setSensitivity("High")
+        # elif keyboard.is_pressed('o'):
+        #     shared_state.setSensitivity("Medium")
+        # elif keyboard.is_pressed('i'):
+        #     shared_state.setSensitivity("Low")
+        # elif keyboard.is_pressed('0'):
+        #     shared_state.tweakSensitivity('EYEBROW_SCALAR', 0.001)
+        # elif keyboard.is_pressed('9'):
+        #     shared_state.tweakSensitivity('EYEBROW_SCALAR', 0.001, decrease=True)
+        # elif keyboard.is_pressed('q'):
+        #     break
 
     cap.release()
     cv2.destroyAllWindows()
