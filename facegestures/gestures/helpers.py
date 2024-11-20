@@ -5,7 +5,7 @@ from imutils import face_utils
 from imutils.video import VideoStream
 import imutils
 import dlib
-import mediapipe as mp
+# import mediapipe as mp
 
 """
     Random Helper Functions
