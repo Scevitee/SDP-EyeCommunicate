@@ -1,4 +1,3 @@
-# draw_test.py
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget,

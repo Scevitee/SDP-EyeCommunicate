@@ -1,4 +1,3 @@
-# art_canvas.py
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget,
