@@ -169,9 +169,9 @@ def render_boxes_with_info(
         )
 
         # Modified portion of the function
-        # Loop through predictions and print prediction info to terminal
         eye_predict = []
         gaze_predict = []
+        # Loop through predictions and print prediction info to terminal
         if isinstance(frame_prediction, dict) and 'predictions' in frame_prediction:
             for prediction in frame_prediction['predictions']:
                 x = prediction.get("x", 0)
@@ -250,6 +250,24 @@ def screenPoints():
     yCal_points = [height/2, height-50]
     # xCal_points = [50, width/2, width-50, 50, width/2, width-50, 50, width/2, width-50]
     # yCal_points = [50, 50, 50, height/2, height/2, height/2, height-50, height-50, height-50]
+    # xCal_points.append(50)
+    # yCal_points.append(50)
+    # xCal_points.append(width / 2)
+    # yCal_points.append(50)
+    # xCal_points.append(width - 50)
+    # yCal_points.append(50)
+    # xCal_points.append(50)
+    # yCal_points.append(height / 2)
+    # xCal_points.append(width / 2)
+    # yCal_points.append(height / 2)
+    # xCal_points.append(width - 50)
+    # yCal_points.append(height / 2)
+    # xCal_points.append(50)
+    # yCal_points.append(height - 50)
+    # xCal_points.append(width / 2)
+    # yCal_points.append(height - 50)
+    # xCal_points.append(width - 50)
+    # yCal_points.append(height - 50)
 
 
 def trans_coords(eye_predict, gaze_predict):
