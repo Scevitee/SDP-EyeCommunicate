@@ -180,6 +180,7 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor):
                 eyebrow_raised = detect_eyebrow_raise(landmarks, shared_state)
                 if eyebrow_raised and shared_state.universal_buffer_frames == 0:
                     print("Eyebrow raised!")
+                    pyautogui.press('enter')
                     shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
     # Decrease the blink display frame counter
