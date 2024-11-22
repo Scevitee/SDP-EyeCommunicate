@@ -1,14 +1,6 @@
-import pygame
-from eyegestures import EyeGestures_v2
-import cv2
-
-
 def Calibrate(cap, width, height):
 
     eye_gestures = EyeGestures_v2(calibration_radius=1000)
-    ret, frame = cap.read()
-    if not ret:
-        print("Failed to grab frame")
 
     # Initialize Pygame
     pygame.init()
@@ -35,6 +27,11 @@ def Calibrate(cap, width, height):
                 if event.key == pygame.K_q and pygame.key.get_mods() & pygame.KMOD_CTRL:
                     running = False
 
+        ret, frame = cap.read()
+        if not ret or frame.shape[0] == 0:
+            print("Frame not loaded")
+            break
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         gevent, cevent = eye_gestures.step(
             frame,
