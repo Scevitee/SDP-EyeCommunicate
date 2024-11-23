@@ -5,7 +5,7 @@ imutils
 inference
 keyboard
 mediapipe
-opencv-contrib-python
+opencv-python
 Pillow
 PyAutoGUI
 PyQt5

@@ -1,26 +1,41 @@
-# main.py
 import cv2
+import os, sys
+# ci_build_and_not_headless = False
+# try:
+#     from cv2.version import ci_build, headless
+#     ci_and_not_headless = ci_build and not headless
+# except:
+#     pass
+# if sys.platform.startswith("linux") and ci_and_not_headless:
+#     os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+# if sys.platform.startswith("linux") and ci_and_not_headless:
+#     os.environ.pop("QT_QPA_FONTDIR")
+
 import dlib
 import numpy as np
 import imutils
+import sys
 import time
-# import keyboard
+import keyboard
 import pyautogui
 import threading
 import facegestures.pose as service
 from dataclasses import dataclass
 from imutils import face_utils
 from imutils.video import VideoStream
+from PyQt5.QtWidgets import QApplication
+from PyQt5 import QtCore
 from collections import deque
 from facegestures.gestures import *
-from eyetracking.eyegestures import EyeGestures_v2 
+from eyetracking.eyegestures import EyeGestures_v2
+from ui.overlay import Overlay
 
 """
     This is a copy of our main.py file from presentation 2, but without the webcam display.
     I have tried to add as many comments as possible to explain how things are working here. 
 """
 
-# This class holds all the data that the different processes need to access, share, and modify
+# This class holds all the data that the different threads need to access, share, and modify
 class SharedState:
     def __init__(self):
         # Blink detection variables
@@ -32,7 +47,7 @@ class SharedState:
         self.BLINK_BUFFER_DURATION = 20
         self.blink_buffer_frames = 0
         self.calibrated_ear = 0
-        self.EAR_SCALAR = 0.76
+        self.EAR_SCALAR = 0.70   # larger value == easier to detect blinks
         
         # Checking if centered variables
         self.IS_CENTERED_QUEUE_SIZE = 15
@@ -45,19 +60,20 @@ class SharedState:
         self.eyebrow_counter = 0
         self.EYEBROW_THRESHOLD = 0.475     # Deprecated / no longer in use
         self.calibrated_eyebrow_distance = 0
-        self.EYEBROW_SCALAR = 1.3   # Larger val == eyebrows have to raised higher in order to detect
+        self.EYEBROW_SCALAR = 1.35   # Larger val == eyebrows have to raised higher in order to detect
         self.eyebrow_list = []
 
         # Calibration variables
-        self.calibration_time = 4  # seconds
+        self.calibration_time = 3  # seconds
         self.calibrating = True
         self.ear_list = []
         self.start_time = time.time()
         # Dictionary of dictionaries used to change how easy / hard it is to trigger different gestures
         # Higher sensitivity == 'more sensitive', i.e., easier to trigger detection
-        self.sensitivities = {"High":{"shake_threshold":2, "nod_threshold":2, "eyebrow_scalar":1.2, "ear_scalar":0.82, "gaze_time_window":30}, 
-                              "Medium":{"shake_threshold":3, "nod_threshold":3, "eyebrow_scalar":1.3, "ear_scalar":0.76, "gaze_time_window":50}, 
-                              "Low":{"shake_threshold":4, "nod_threshold":4, "eyebrow_scalar":1.45, "ear_scalar":0.70, "gaze_time_window":70}}
+        # Should be modified based on testing
+        self.sensitivities = {"High":{"shake_threshold":2, "nod_threshold":2, "eyebrow_scalar":1.2, "ear_scalar":0.80, "gaze_time_window":30}, 
+                              "Medium":{"shake_threshold":3, "nod_threshold":3, "eyebrow_scalar":1.35, "ear_scalar":0.70, "gaze_time_window":50}, 
+                              "Low":{"shake_threshold":4, "nod_threshold":4, "eyebrow_scalar":1.45, "ear_scalar":0.60, "gaze_time_window":70}}
 
         # Shake/Nod detection variables
         self.SHAKE_THRESHOLD = 3  # Number of changes from left->right to count as a shake
@@ -79,6 +95,7 @@ class SharedState:
         # Universal buffer duration and counter
         self.UNIVERSAL_BUFFER_DURATION = 50
         self.universal_buffer_frames = 0
+        
         
     # Choose from some default sensitivity levels
     def setSensitivity(self, sensitivity):
@@ -114,7 +131,9 @@ class SharedState:
            
 
 # Function for everything 'landmark related' (face detection, blink detection, eyebrow raise detection)
-def face_and_blink_detection(frame, gray, shared_state, detector, predictor):
+def face_and_blink_detection(frame, gray, shared_state, detector, predictor, overlay):
+    
+    # print("MADE IT TO FACE AND BLINK")
     # Necessary measurements to determine if face is centered
     frame_center_x, frame_center_y = frame.shape[1] // 2, frame.shape[0] // 2
     center_margin_x, center_margin_y = frame.shape[1] * 0.2, frame.shape[0] * 0.2
@@ -165,6 +184,11 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor):
         else:
             # Blink detection
             # Only perform on odd number frames
+            """
+            This is called 'frame-skipping'. This prevents us from having to do a bunch of sequential detections
+            Blink will be detected on odd frames, eyebrows on even, this doesn't have a noticeable impact on accuracy
+            but is a great performance optimization
+            """
             if shared_state.frame_counter % 2:
                 blink_detected, shared_state.blink_buffer_frames, shared_state.blink_history = detect_blink(
                     landmarks, shared_state.calibrated_ear, shared_state.blink_history,
@@ -175,7 +199,7 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor):
                     shared_state.blink_display_frames = shared_state.BLINK_DISPLAY_DURATION
                     shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
-            # Eyebrow raise detection
+            # Eyebrow raise detection on even frames
             else:
                 eyebrow_raised = detect_eyebrow_raise(landmarks, shared_state)
                 if eyebrow_raised and shared_state.universal_buffer_frames == 0:
@@ -192,8 +216,9 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor):
 
 
 # Function for everything 'pose related' (pose estimation, gaze direction, shake/nod detection)
-def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color=(224, 255, 255)):
+def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, color=(224, 255, 255)):
     # Convert dlib faces to the format required by the pose estimation model
+    # print("MADE IT TO POSE")
     dense_faces = dlib_to_dense(shared_state.dlib_faces)
     for results in fa.get_landmarks(frame, dense_faces):
         # Get gaze directions
@@ -219,26 +244,26 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color=(224,
         if shared_state.universal_buffer_frames == 0:
             if look_left_detected:
                 print("LOOKING LEFT")
+                overlay.change_page_directional('left')
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                
             elif look_right_detected:
                 print("LOOKING RIGHT")
+                overlay.change_page_directional('right')
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+
             elif look_up_detected:
                 print("LOOKING UP")
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
             elif look_down_detected:
                 print("LOOKING DOWN")
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
-            elif shake_detected and not nod_detected:
-                # Handle shake detection
-                current_time = time.time()
-                if current_time - shared_state.last_change_time > shared_state.CHANGE_COOLDOWN_PERIOD:
-                    # Uncomment the following line to enable page change functionality
-                    # change_pages()
-                    shared_state.last_change_time = current_time
+            elif shake_detected:
+                print("SHAKE DETECTED")                
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
             elif nod_detected:
-                # Handle nod detection
+                print("NOD DETECTED")
+                overlay.toggle_pin()                
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
     # Decrease the universal buffer frames
@@ -247,57 +272,60 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color=(224,
 
 
 def main():
-    
     eye_gestures = EyeGestures_v2(calibration_radius=400)
-    
+
     # Video capture
     cap = cv2.VideoCapture(0)
-    
+
     screen_width, screen_height = pyautogui.size()
-    
+
     # Initialize detectors and predictors
-    # dlib detector / predictor
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor("facegestures/models/shape_predictor_68_face_landmarks.dat")
-    # Pose estimation predictor
-    # Currently implemented to utilize the dlib detector (may not be needed now that we have multithreading working)
     fa = service.DepthFacialLandmarks("facegestures/models/sparse_face.tflite")
 
-    # Create a shared state. Consider changing to @dataclass object
-    # Holds all the data that the different processes need to access, share, and modify
+    # Create a shared state
     shared_state = SharedState()
 
+    # Initialize the QApplication and Overlay
+    app = QApplication(sys.argv)
+    app.setStyle('QtCurve')
+    overlay = Overlay()
+    overlay.show()
+    overlay.destroyed.connect(app.quit)  # Ensures the program exits when the overlay is closed
+
+    # Function to process frames in a separate thread
+    # print("entering main loop")
     while True:
+        # print("looping")
         ret, frame = cap.read()
         if not ret:
             break
-        
+
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # frame = imutils.resize(frame, width=1200)
-        
-        # h, w, _ = frame.shape
-        
+        h, w, _ = frame.shape
+
         gevent, cevent = eye_gestures.step(
             frame,
             calibration=False,
-            width=screen_width,    
-            height=screen_height,  
+            width=w,
+            height=h,
             context="main"
         )
 
         if gevent is not None:
             gaze_point = gevent.point  # (x, y) coordinates
 
-            # Uncomment the following line to enable cursor movement
+            # Display the gaze point on the frame
+            cv2.circle(frame, (int(gaze_point[0]), int(gaze_point[1])), 10, (0, 0, 0), -1)
+            cv2.putText(frame, f"Gaze: ({int(gaze_point[0])}, {int(gaze_point[1])})",
+                        (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             # pyautogui.moveTo(int(gaze_point[0]), int(gaze_point[1]))
-            
+
         # Create threads
-        # First thread controls operations relating to face detection, blink detection/calibration, and eyebrow raise detection
-        # Consider further separating these operations into their own threads
-        t1 = threading.Thread(target=face_and_blink_detection, args=(frame, gray, shared_state, detector, predictor))
-        t2 = threading.Thread(target=pose_estimation_and_shake_nod_detection, args=(frame, shared_state, fa))
-    
+        t1 = threading.Thread(target=face_and_blink_detection, args=(frame, gray, shared_state, detector, predictor, overlay))
+        t2 = threading.Thread(target=pose_estimation_and_shake_nod_detection, args=(frame, shared_state, fa, overlay))
 
         # Start threads
         t1.start()
@@ -306,24 +334,23 @@ def main():
         # Wait for threads to finish
         t1.join()
         t2.join()
-        
-        # Use keyboard module to detect key presses
-        # if keyboard.is_pressed('p'):
-        #     shared_state.setSensitivity("High")
-        # elif keyboard.is_pressed('o'):
-        #     shared_state.setSensitivity("Medium")
-        # elif keyboard.is_pressed('i'):
-        #     shared_state.setSensitivity("Low")
-        # elif keyboard.is_pressed('0'):
-        #     shared_state.tweakSensitivity('EYEBROW_SCALAR', 0.001)
-        # elif keyboard.is_pressed('9'):
-        #     shared_state.tweakSensitivity('EYEBROW_SCALAR', 0.001, decrease=True)
-        # elif keyboard.is_pressed('q'):
-        #     break
 
-    cap.release()
-    cv2.destroyAllWindows()
+        # Perform GUI operations in the main thread
+        # if shared_state.request_show_normal:
+        #     overlay.showNormal()
+        #     shared_state.request_show_normal = False
+        # elif shared_state.request_show_minimized:
+        #     overlay.showMinimized()
+        #     shared_state.request_show_minimized = False
 
+        # Process PyQt events
+        app.processEvents()
+
+        # cap.release()
+        # Since we're not displaying any windows, we don't need to call cv2.destroyAllWindows()
+
+    sys.exit(app.exec_())
+    
 
 if __name__ == '__main__':
     main()

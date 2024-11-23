@@ -44,7 +44,7 @@ def detect_eyebrow_raise(face_landmarks, shared_state, eyeb_raise_consec_frames=
         
         # checking for consectutive frames of eyebrow being above the threshold
         if shared_state.eyebrow_counter >= eyeb_raise_consec_frames:
-            print(f"Avg eyebrow-eye distance: {eyebrow_dist_avg}")
+            # print(f"Avg eyebrow-eye distance: {eyebrow_dist_avg}")
             shared_state.eyebrow_counter = 0
             return True
     else:

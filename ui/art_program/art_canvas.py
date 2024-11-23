@@ -207,7 +207,7 @@ class DrawingCanvas(QWidget):
             pixel_stack.append((x, y - 1))
 
 
-class MainWindow(QMainWindow):
+class ArtWidget(QWidget):
     def __init__(self):
         super().__init__()
 
@@ -273,9 +273,9 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.loading_label)    # Add loading label to layout
 
         # Set main layout
-        container = QWidget()
-        container.setLayout(main_layout)
-        self.setCentralWidget(container)
+        # container = QWidget()
+        self.setLayout(main_layout)
+        # self.setCentralWidget(container)
 
         # Set initial window size
         self.resize(1000, 1000)
@@ -350,7 +350,7 @@ class MainWindow(QMainWindow):
         return super().eventFilter(source, event)
 
 
-app = QApplication([])
-window = MainWindow()
-window.show()
-app.exec_()
+# app = QApplication([])
+# window = MainWindow()
+# window.show()
+# app.exec_()
