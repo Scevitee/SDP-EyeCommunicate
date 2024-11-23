@@ -71,16 +71,16 @@ class SharedState:
         # Dictionary of dictionaries used to change how easy / hard it is to trigger different gestures
         # Higher sensitivity == 'more sensitive', i.e., easier to trigger detection
         # Should be modified based on testing
-        self.sensitivities = {"High":{"shake_threshold":2, "nod_threshold":2, "eyebrow_scalar":1.2, "ear_scalar":0.80, "gaze_time_window":30}, 
-                              "Medium":{"shake_threshold":3, "nod_threshold":3, "eyebrow_scalar":1.35, "ear_scalar":0.70, "gaze_time_window":50}, 
-                              "Low":{"shake_threshold":4, "nod_threshold":4, "eyebrow_scalar":1.45, "ear_scalar":0.60, "gaze_time_window":70}}
+        self.sensitivities = {"High":{"shake_threshold":3, "nod_threshold":2, "eyebrow_scalar":1.2, "ear_scalar":0.80, "gaze_time_window":30}, 
+                              "Medium":{"shake_threshold":4, "nod_threshold":3, "eyebrow_scalar":1.35, "ear_scalar":0.70, "gaze_time_window":50}, 
+                              "Low":{"shake_threshold":5, "nod_threshold":4, "eyebrow_scalar":1.45, "ear_scalar":0.60, "gaze_time_window":70}}
 
         # Shake/Nod detection variables
         self.SHAKE_THRESHOLD = 3  # Number of changes from left->right to count as a shake
         self.NOD_THRESHOLD = 3   # Number of changes from up->down to count as a nod
         self.GAZE_TIME_WINDOW = 50   # Number of frames to check for shake/nod. Also used to check for gaze left/right and gaze up/down
-        self.left_right_history = deque(maxlen=self.GAZE_TIME_WINDOW)   
-        self.up_down_history = deque(maxlen=self.GAZE_TIME_WINDOW)
+        self.left_right_history = deque([0] * self.GAZE_TIME_WINDOW, maxlen=self.GAZE_TIME_WINDOW)   
+        self.up_down_history = deque([0] * self.GAZE_TIME_WINDOW, maxlen=self.GAZE_TIME_WINDOW)
         
         # Keyboard variables
         self.last_change_time = 0
