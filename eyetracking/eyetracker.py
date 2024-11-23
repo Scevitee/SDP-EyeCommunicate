@@ -1,22 +1,22 @@
 import pygame
 import cv2
+# import numpy as np
 from eyeGestures.eyegestures import EyeGestures_v2
 from eyeGestures.utils import VideoCapture
 import pyautogui
 
-def main():
 
-    # Retrieve screen dimensions
-    # screen_width, screen_height = pyautogui.size()
-    screen_width = 3440
-    screen_height = 1440
+def main():
 
     cap = VideoCapture(0)  # Use the default webcam
     # eye_gestures = Calibrate(cap, screen_width, screen_height)
 
     radius = 500
     eye_gestures = EyeGestures_v2(radius)
+    eye_gestures.setClassicalImpact(2)
+    eye_gestures.setFixation(1.0)
     calib = True
+    end_calib = True
 
     # Create a fullscreen window
 
@@ -28,10 +28,10 @@ def main():
     screen_width = screen_info.current_w
     screen_height = screen_info.current_h
 
-    RED = (255, 0, 100)
+    # RED = (255, 0, 100)
+    # GREEN = (0, 255, 0)
+    # BLANK = (0, 0, 0)
     BLUE = (100, 0, 255)
-    GREEN = (0, 255, 0)
-    BLANK = (0,0,0)
     WHITE = (255, 255, 255)
 
     # Set up the screen
@@ -41,6 +41,8 @@ def main():
     font_size = 48
     bold_font = pygame.font.Font(None, font_size)
     bold_font.set_bold(True)  # Set the font to bold
+
+    pyautogui.FAILSAFE = False
 
     iterator = 0
     prev_x = 0
@@ -53,6 +55,8 @@ def main():
             print("Failed to grab frame")
             break
 
+        # cv2.imwrite('frame.jpg', frame)
+
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         # Call the step method and unpack two returned objects
         gevent, cevent = eye_gestures.step(
@@ -63,7 +67,18 @@ def main():
             context="main"
         )
 
-        if calib:
+        # print("radius: ", radius)
+        # print("Calibration point: ", cevent.point)
+        # print("Gaze point: ", gevent.point)
+
+        if gevent is not None and not calib:
+            gaze_point = gevent.point  # (x, y) coordinates
+            # Display the gaze point on the frame
+            pyautogui.moveTo(int(gaze_point[0]), int(gaze_point[1]))  # add this in when it is more stable
+        elif not calib and end_calib:
+            pygame.quit()
+            end_calib = False
+        elif calib:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -74,13 +89,16 @@ def main():
                         track = False
 
             screen.fill((0, 0, 0))
-            frame = pygame.surfarray.make_surface(frame)
-            frame = pygame.transform.scale(frame, (400, 400))
-            screen.blit(frame, (0, 0))
+            # this section is to display the camera frames
+            # uncomment the numpy import at the top as well for use
+            # frame = np.rot90(frame)
+            # frame = pygame.surfarray.make_surface(frame)
+            # frame = pygame.transform.scale(frame, (400, 400))
+            # screen.blit(frame, (0, 0))
 
             my_font = pygame.font.SysFont('Comic Sans MS', 30)
             text_surface = my_font.render(f'{gevent.fixation}', False, (0, 0, 0))
-            screen.blit(text_surface, (0,0))
+            screen.blit(text_surface, (0, 0))
 
             text_surface = bold_font.render(f"{iterator}/{25}", True, WHITE)
             text_square = text_surface.get_rect(center=cevent.point)
@@ -95,15 +113,7 @@ def main():
                 prev_y = cevent.point[1]
 
             calib = (iterator <= 25)
-
-        if gevent is not None:
-            gaze_point = gevent.point  # (x, y) coordinates
-            # Display the gaze point on the frame
-            # pyautogui.moveTo(int(gaze_point[0]), int(gaze_point[1]))  # add this in when it is more stable
-
-        # Show the frame with annotations
-
-    pygame.quit()
+            pygame.display.flip()
 
 
 
