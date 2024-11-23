@@ -1,22 +1,10 @@
 import cv2
-import os, sys
-# ci_build_and_not_headless = False
-# try:
-#     from cv2.version import ci_build, headless
-#     ci_and_not_headless = ci_build and not headless
-# except:
-#     pass
-# if sys.platform.startswith("linux") and ci_and_not_headless:
-#     os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
-# if sys.platform.startswith("linux") and ci_and_not_headless:
-#     os.environ.pop("QT_QPA_FONTDIR")
-
+import sys
 import dlib
 import numpy as np
 import imutils
 import sys
 import time
-import keyboard
 import pyautogui
 import threading
 import facegestures.pose as service
@@ -68,6 +56,7 @@ class SharedState:
         self.calibrating = True
         self.ear_list = []
         self.start_time = time.time()
+        
         # Dictionary of dictionaries used to change how easy / hard it is to trigger different gestures
         # Higher sensitivity == 'more sensitive', i.e., easier to trigger detection
         # Should be modified based on testing
@@ -76,8 +65,8 @@ class SharedState:
                               "Low":{"shake_threshold":5, "nod_threshold":4, "eyebrow_scalar":1.45, "ear_scalar":0.60, "gaze_time_window":70}}
 
         # Shake/Nod detection variables
-        self.SHAKE_THRESHOLD = 3  # Number of changes from left->right to count as a shake
-        self.NOD_THRESHOLD = 3   # Number of changes from up->down to count as a nod
+        self.SHAKE_THRESHOLD = 4  # Number of changes from left->right to count as a shake
+        self.NOD_THRESHOLD = 4   # Number of changes from up->down to count as a nod
         self.GAZE_TIME_WINDOW = 50   # Number of frames to check for shake/nod. Also used to check for gaze left/right and gaze up/down
         self.left_right_history = deque([0] * self.GAZE_TIME_WINDOW, maxlen=self.GAZE_TIME_WINDOW)   
         self.up_down_history = deque([0] * self.GAZE_TIME_WINDOW, maxlen=self.GAZE_TIME_WINDOW)
@@ -335,19 +324,11 @@ def main():
         t1.join()
         t2.join()
 
-        # Perform GUI operations in the main thread
-        # if shared_state.request_show_normal:
-        #     overlay.showNormal()
-        #     shared_state.request_show_normal = False
-        # elif shared_state.request_show_minimized:
-        #     overlay.showMinimized()
-        #     shared_state.request_show_minimized = False
 
         # Process PyQt events
         app.processEvents()
 
         # cap.release()
-        # Since we're not displaying any windows, we don't need to call cv2.destroyAllWindows()
 
     sys.exit(app.exec_())
     
