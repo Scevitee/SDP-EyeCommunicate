@@ -6,7 +6,7 @@ Application Suite Utilizing Eye-Tracking and Facial Gestures
 
 For development, create a virtual environment using `venv` or `conda`, I use venv
 
-```python3.11 -m venv env```
+```python3.9 -m venv env```
 
 (Package I used for a test is incompatible with latest Python version, hence the Python3.11)
 

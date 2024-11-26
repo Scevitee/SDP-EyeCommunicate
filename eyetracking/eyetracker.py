@@ -4,6 +4,7 @@ import cv2
 from eyeGestures.eyegestures import EyeGestures_v2
 from eyeGestures.utils import VideoCapture
 import pyautogui
+# from pynput.mouse import Controller
 
 
 def main():
@@ -43,6 +44,7 @@ def main():
     bold_font.set_bold(True)  # Set the font to bold
 
     pyautogui.FAILSAFE = False
+    # mouse = Controller()
 
     iterator = 0
     prev_x = 0
@@ -73,18 +75,18 @@ def main():
 
         if gevent is not None and not calib:
             gaze_point = gevent.point  # (x, y) coordinates
-            # Display the gaze point on the frame
             pyautogui.moveTo(int(gaze_point[0]), int(gaze_point[1]))  # add this in when it is more stable
-        elif not calib and end_calib:
-            pygame.quit()
-            end_calib = False
+            # mouse.position(int(gaze_point[0]), int(gaze_point[1]))
+            if end_calib:
+                pygame.quit()
+                end_calib = False
         elif calib:
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
+                if event.type == pygame.quit:
                     pygame.quit()
                     track = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                elif event.type == pygame.keydown:
+                    if event.key == pygame.k_q and pygame.key.get_mods() & pygame.kmod_ctrl:
                         pygame.quit()
                         track = False
 
