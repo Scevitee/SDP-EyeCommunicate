@@ -1,9 +1,9 @@
 import pygame
 import cv2
-# import numpy as np
+import numpy as np
 from eyeGestures.eyegestures import EyeGestures_v2
 from eyeGestures.utils import VideoCapture
-import pyautogui
+# import pyautogui
 # from pynput.mouse import Controller
 
 
@@ -43,7 +43,7 @@ def main():
     bold_font = pygame.font.Font(None, font_size)
     bold_font.set_bold(True)  # Set the font to bold
 
-    pyautogui.FAILSAFE = False
+    # pyautogui.FAILSAFE = False
     # mouse = Controller()
 
     iterator = 0
@@ -75,28 +75,26 @@ def main():
 
         if gevent is not None and not calib:
             gaze_point = gevent.point  # (x, y) coordinates
-            pyautogui.moveTo(int(gaze_point[0]), int(gaze_point[1]))  # add this in when it is more stable
+            # pyautogui.moveTo(int(gaze_point[0]), int(gaze_point[1]))  # add this in when it is more stable
             # mouse.position(int(gaze_point[0]), int(gaze_point[1]))
             if end_calib:
                 pygame.quit()
                 end_calib = False
         elif calib:
             for event in pygame.event.get():
-                if event.type == pygame.quit:
-                    pygame.quit()
-                    track = False
-                elif event.type == pygame.keydown:
-                    if event.key == pygame.k_q and pygame.key.get_mods() & pygame.kmod_ctrl:
-                        pygame.quit()
-                        track = False
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                        running = False
 
             screen.fill((0, 0, 0))
             # this section is to display the camera frames
             # uncomment the numpy import at the top as well for use
-            # frame = np.rot90(frame)
-            # frame = pygame.surfarray.make_surface(frame)
-            # frame = pygame.transform.scale(frame, (400, 400))
-            # screen.blit(frame, (0, 0))
+            frame = np.rot90(frame)
+            frame = pygame.surfarray.make_surface(frame)
+            frame = pygame.transform.scale(frame, (400, 400))
+            screen.blit(frame, (0, 0))
 
             my_font = pygame.font.SysFont('Comic Sans MS', 30)
             text_surface = my_font.render(f'{gevent.fixation}', False, (0, 0, 0))
