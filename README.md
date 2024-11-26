@@ -1,78 +1,54 @@
-# SDP-EyeCommunicate
-Application Suite Utilizing Eye-Tracking and Facial Gestures
+
+
+<div align="center">
+    <img src="assets/eyecomm.png" alt="EyeCommunicate Logo" width="250" height="250">
+</div>
+
+# EyeCommunicate
+
+
+## 🚀 About the Project
+**EyeCommunicate** is an innovative application that demonstrates the power of **eye tracking** and **facial gestures** as input devices. With EyeCommunicate, users can control their cursor using eye movements and trigger various application hotkeys through facial gestures—making hands-free interaction more accessible.
 
 ---
 
-
-For development, create a virtual environment using `venv` or `conda`, I use venv
-
-```python3.11 -m venv env```
-
-(Package I used for a test is incompatible with latest Python version, hence the Python3.11)
-
-Access your virtual environment.  
-
-```source env/bin/activate```  
-
-If on Windows, run the following
-
-```source env/Scripts/activate```  
-
-Install the current requirements
-
-```pip install -r requirements.txt```
-
-Update requirements.txt if you install any additional packages
-
-```pip freeze > requirements.txt```
-
-Good practice is to NOT commit your environment files, so I've added env/ to our .gitignore file
+## 🎯 Available Commands
+- **Look Left** → Change page left  
+- **Look Right** → Change page right  
+- **Look Up** → Increase window size  
+- **Look Down** → Decrease window size  
+- **Shake Head** → Change gesture detection sensitivity  
+- **Nod Head** → Pin window  
+- **Raise Eyebrows** → Enter  
+- **Hold Blink** → *TBD*  
 
 ---
 
-Please work on your own branch. To cover our bases, I've added some basic stuff about version control just so we're all on the same page. 
+## 🔧 Setup Instructions
 
-Create branch / change branches
+EyeCommunicate is designed to work with **Python 3.9**. Follow these steps to set up the application:
 
-```git checkout -b <branch-name>```
+1. Create a virtual environment:
+   ```bash
+   python3.9 -m venv env
+   ```
+2. Install the required dependencies:
+   ```bash
+   pip3 install -r requirements.txt
+   ```
 
-Sync with remote regularly 
+### ⚠️ Operating System Note
+Setup instructions may vary depending on your operating system:
+- **Windows Users**: TODO.
+- **Linux/Mac Users**: TODO.
 
-```git push origin <branch-name>```
+---
 
-Pull and rebase regularly
-```
-git fetch origin
-git checkout main
-git pull origin main
-```
+## 🌟 Features
+- **Hands-Free Interaction**: Use your eyes and facial gestures for seamless control.
+- **Customizable Sensitivity**: Adjust the gesture detection sensitivity to your needs.
 
-After pulling, rebase your branch
-```
-git checkout <branch-name>
-git rebase main
-```
 
-Merge your branch
-```
-git checkout main
-git pull origin main
-git merge <branch-name>
-git push origin main
-```
+---
 
-OPTIONAL: Delete branch
-```
-git branch -d <branch-name>
-git push origin --delete <branch-name>
-```
-
-Example workflow
-
-1. You pull the latest changes from the main branch, create a new branch (feature/user-authentication), and start working.
-
-2. You commit and push your changes regularly. You also pull updates from the main branch, rebase your branch, and resolve any conflicts.
-
-3. You open a pull request for your feature branch. After review and testing, the pull request is approved and merged.
-
-4. You delete the feature branch and start a new branch for the next task
+> _Empower interaction with just a glance!_
