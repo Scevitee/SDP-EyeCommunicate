@@ -103,10 +103,10 @@ class Overlay(QWidget):
 
         # Create the eyeball button (icon) for minimized state
         self.eyeball_button = QPushButton(self)
-        eyeball_icon = QIcon("assets/eyeball.png")
+        eyeball_icon = QIcon("assets/eyecomm.png")
         self.eyeball_button.setIcon(eyeball_icon)
-        self.eyeball_button.setIconSize(QSize(60, 60))  # Adjust size as needed
-        self.eyeball_button.setFixedSize(75, 75)        # Adjust size as needed
+        self.eyeball_button.setIconSize(QSize(75, 75))  # Adjust size as needed
+        self.eyeball_button.setFixedSize(85, 85)        # Adjust size as needed
         self.eyeball_button.clicked.connect(self.toggle_pin)
         self.eyeball_button.setStyleSheet("""
             QPushButton {
