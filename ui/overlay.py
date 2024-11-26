@@ -1,11 +1,11 @@
 # enhanced_ui.py
 import sys
-from PyQt5.QtCore import Qt, QPoint, QSize, pyqtSignal, QEvent
+from PyQt5.QtCore import Qt, QPoint, QSize, QEvent
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,
     QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory
 )
-from PyQt5.QtGui import QPainter, QColor, QImage, QPen, QIcon, QKeyEvent, QFont
+from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent
 
 from .art_program.art_canvas import ArtWidget
 
@@ -13,14 +13,9 @@ class Overlay(QWidget):
     def __init__(self):
         super().__init__()
 
-        # Define initial and compact size dimensions
+        # Define initial size dimensions
         self.default_size = (1000, 1000)
-        self.button_size = 50  # Increased button size for better visibility
-        self.compact_height = self.button_size - 25
-        self.compact_width = (self.button_size + 5) * 5  # Adjusted for spacing
-
-        # Start in expanded mode
-        self.is_pinned = False
+        self.is_pinned = False  # Start in expanded mode
 
         # Set up the window properties
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -52,7 +47,6 @@ class Overlay(QWidget):
         self.keyboard_widget = KeyboardWidget(self)
         self.stacked_widget.addWidget(self.keyboard_widget)
 
- 
         # Add a horizontal layout for the buttons (tabs) at the bottom
         self.button_layout = QHBoxLayout()
         self.button_layout.setContentsMargins(0, 0, 0, 0)
@@ -68,7 +62,7 @@ class Overlay(QWidget):
 
         # Add a close/power button
         self.close_button = QPushButton(self)
-        power_icon = QIcon("assets/power_icon.png")
+        power_icon = QIcon("assets/power_button.png")
         self.setup_button(self.close_button, power_icon, self.show_confirmation_dialog)
 
         # Add a settings button
@@ -83,9 +77,8 @@ class Overlay(QWidget):
 
         # Add a keyboard button
         self.keyboard_button = QPushButton(self)
-        keyboard_icon = QIcon("assets/keyboard_icon.png")
+        keyboard_icon = QIcon("assets/tts_icon.png")
         self.setup_button(self.keyboard_button, keyboard_icon, self.show_keyboard)
-
 
         self.widget_button_mapping = {
             self.default_label: None,  # No button corresponds to the default label
@@ -108,12 +101,38 @@ class Overlay(QWidget):
         # Add the horizontal button layout to the bottom of the main layout
         self.layout.addLayout(self.button_layout)
 
+        # Create the eyeball button (icon) for minimized state
+        self.eyeball_button = QPushButton(self)
+        eyeball_icon = QIcon("assets/eyeball.png")
+        self.eyeball_button.setIcon(eyeball_icon)
+        self.eyeball_button.setIconSize(QSize(60, 60))  # Adjust size as needed
+        self.eyeball_button.setFixedSize(75, 75)        # Adjust size as needed
+        self.eyeball_button.clicked.connect(self.toggle_pin)
+        self.eyeball_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4c566a;
+                border: none;
+                border-radius: 10px;
+            }
+            QPushButton:hover {
+                background-color: #596787;
+            }
+        """)        
+        self.eyeball_button.hide()  # Initially hidden
+        self.layout.addWidget(self.eyeball_button, alignment=Qt.AlignCenter)
+
         # Variables for dragging
         self.is_dragging = False
         self.drag_start_position = QPoint(0, 0)
         
         self.is_open = True
-
+        
+        # Initialize zoom variables
+        self.zoom_scale = 1.0
+        self.zoom_step = 0.1
+        self.max_zoom = 3.0
+        self.min_zoom = 0.2
+        
         # Set the default widget to display
         self.stacked_widget.setCurrentWidget(self.default_label)
 
@@ -122,12 +141,12 @@ class Overlay(QWidget):
 
     def setup_button(self, button, icon, callback):
         button.setIcon(icon)
-        button.setIconSize(QSize(self.button_size - 10, self.button_size - 10))
-        button.setFixedSize(self.button_size, self.button_size)
+        button.setIconSize(QSize(40, 40))
+        button.setFixedSize(50, 50)
         button.clicked.connect(callback)
         button.setStyleSheet("""
             QPushButton {
-                background-color: #2e3440;
+                background-color: #596787;
                 border: none;
                 border-radius: 10px;
             }
@@ -150,6 +169,7 @@ class Overlay(QWidget):
         # Semi-transparent background with rounded corners
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        
         rect = self.rect()
         rect = rect.adjusted(1, 1, -1, -1)
         painter.setBrush(QColor(46, 52, 64, 220))  # Slightly transparent background
@@ -158,14 +178,41 @@ class Overlay(QWidget):
 
     def toggle_pin(self):
         if self.is_pinned:
-            self.resize(*self.default_size)
+            # Expand the window back to default size
+            self.setFixedSize(*self.default_size)
             self.is_pinned = False
+
+            # Show main UI elements
+            self.stacked_widget.show()
+            for i in range(self.button_layout.count()):
+                widget = self.button_layout.itemAt(i).widget()
+                if widget:
+                    widget.show()
+
+            # Hide the eyeball button
+            self.eyeball_button.hide()
+            # Adjust margins
+            self.layout.setContentsMargins(10, 10, 10, 10)
         else:
-            # Ensure the buttons remain visible and appropriately sized
-            self.resize(self.compact_width, self.compact_height + 50)
+            # Collapse the window to the size of the eyeball icon
+            sz = self.eyeball_button.size()
+            self.setFixedSize(sz.width() * 1.2, sz.height() * 1.2)
             self.is_pinned = True
+
+            # Hide main UI elements
+            self.stacked_widget.hide()
+            for i in range(self.button_layout.count()):
+                widget = self.button_layout.itemAt(i).widget()
+                if widget:
+                    widget.hide()
+
+            # Show the eyeball button
+            self.eyeball_button.show()
+            # Adjust margins
+            self.layout.setContentsMargins(0, 0, 0, 0)
         # Adjust font sizes when resizing
         self.adjust_font_sizes()
+
 
     def show_confirmation_dialog(self):
         confirmation_dialog = QMessageBox(self)
@@ -205,11 +252,12 @@ class Overlay(QWidget):
             event.accept()
 
     def adjust_font_sizes(self):
-        # Adjust font sizes based on the current size of the window
-        scale_factor = self.width() / self.default_size[0]
-        font_size = max(12, int(24 * scale_factor))
-        style = f"color: white; font-size: {font_size}px; font-weight: bold;"
-        self.default_label.setStyleSheet(style)
+        if not self.is_pinned:
+            # Adjust font sizes based on the current size of the window
+            scale_factor = self.width() / self.default_size[0]
+            font_size = max(12, int(24 * scale_factor))
+            style = f"color: white; font-size: {font_size}px; font-weight: bold;"
+            self.default_label.setStyleSheet(style)
 
     def apply_styles(self):
         # Apply overall style to the application
@@ -235,6 +283,25 @@ class Overlay(QWidget):
         # Set the current widget based on the updated index
         self.stacked_widget.setCurrentWidget(self.widget_list[self.current_widget_index])
         self.update_button_styles()
+
+    def apply_zoom(self):
+        self.setFixedSize(
+            int(self.default_size[0] * self.zoom_scale),
+            int(self.default_size[1] * self.zoom_scale)
+        )
+        self.update()
+        
+    def zoom_in(self):
+        if self.zoom_scale < self.max_zoom:
+            self.zoom_scale += self.zoom_step
+            self.apply_zoom()
+                        
+    def zoom_out(self):
+        if self.zoom_scale > self.min_zoom:
+            self.zoom_scale -= self.zoom_step
+            self.update()        
+            self.apply_zoom()
+
         
     def update_button_styles(self):
         # List of buttons that correspond to widgets
@@ -244,7 +311,7 @@ class Overlay(QWidget):
         for button in buttons:
             button.setStyleSheet("""
                 QPushButton {
-                    background-color: #2e3440;
+                    background-color: #596787;
                     border: none;
                     border-radius: 10px;
                 }
@@ -268,6 +335,23 @@ class Overlay(QWidget):
                     background-color: #88c0d0;
                 }
             """)
+            
+    # FOR TESTING METHODS BEFORE INTEGRATING WITH FACIAL GESTURES
+    def keyPressEvent(self, event):
+        """
+        Overrides the keyPressEvent to handle custom key bindings.
+        """
+        if event.key() == Qt.Key_I:  # Zoom in
+            self.zoom_in()
+            print("Zoom in")
+            print(self.zoom_scale)
+        elif event.key() == Qt.Key_U:  # Zoom out
+            self.zoom_out()
+            print("Zoom out")
+            print(self.zoom_scale)
+            
+        else:
+            super().keyPressEvent(event)
 
 
 class KeyboardWidget(QWidget):

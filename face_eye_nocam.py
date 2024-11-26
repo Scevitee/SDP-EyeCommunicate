@@ -243,13 +243,18 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
 
             elif look_up_detected:
                 print("LOOKING UP")
+                overlay.zoom_in()
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                
             elif look_down_detected:
                 print("LOOKING DOWN")
+                overlay.zoom_out()
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+            
             elif shake_detected:
                 print("SHAKE DETECTED")                
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+            
             elif nod_detected:
                 print("NOD DETECTED")
                 overlay.toggle_pin()                
