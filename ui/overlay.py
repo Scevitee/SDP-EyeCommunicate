@@ -1,13 +1,15 @@
 # enhanced_ui.py
 import sys
-from PyQt5.QtCore import Qt, QPoint, QSize, QEvent
+from PyQt5.QtCore import Qt, QPoint, QSize, QEvent, QTimer
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,
-    QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory
+    QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory, QLineEdit
 )
 from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent
 
 from .art_program.art_canvas import ArtWidget
+from .tts.virtual_keyboard import AlphaNeumericVirtualKeyboard as VKeyboard
+
 
 class Overlay(QWidget):
     def __init__(self):
@@ -358,53 +360,66 @@ class KeyboardWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Main layout for the keyboard
+        # Main layout for the keyboard widget
         layout = QVBoxLayout(self)
         layout.setSpacing(5)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        key_rows = [
-            ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-            ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-            ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'Space']
-        ]
+        # Create a QLineEdit for text input
+        self.text_entry = QLineEdit(self)
+        self.text_entry.setPlaceholderText("Click to type...")
+        self.text_entry.setStyleSheet("""
+            QLineEdit {
+                font-size: 18px;
+                padding: 5px;
+                border: 1px solid #4c566a;
+                border-radius: 5px;
+                color: #ECEFF4;
+            }
+        """)
+        self.text_entry.setFixedHeight(40)
+        layout.addWidget(self.text_entry)
 
-        for row in key_rows:
-            row_layout = QHBoxLayout()
-            row_layout.setSpacing(5)
-            for key in row:
-                button = QPushButton(key)
-                button.setFixedSize(60, 60)
-                button.clicked.connect(lambda _, k=key: self.key_pressed(k))
-                button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #3b4252;
-                        color: #ECEFF4;
-                        border: none;
-                        border-radius: 5px;
-                        font-size: 18px;
-                    }
-                    QPushButton:hover {
-                        background-color: #4c566a;
-                    }
-                """)
-                row_layout.addWidget(button)
-            layout.addLayout(row_layout)
+        # Add the virtual keyboard in a horizontally centered container
+        keyboard_container = QWidget(self)
+        keyboard_layout = QHBoxLayout(keyboard_container)
+        keyboard_layout.setContentsMargins(0, 0, 0, 0)
+        keyboard_layout.setAlignment(Qt.AlignHCenter)
 
+        # Embed the virtual keyboard
+        self.virtual_keyboard = VKeyboard(self.text_entry)
+        self.virtual_keyboard.setParent(keyboard_container)
+        self.virtual_keyboard.setFixedSize(800, 315)  # Adjust to ensure it fits correctly
+        self.virtual_keyboard.hide()
+        keyboard_layout.addWidget(self.virtual_keyboard)
+
+        layout.addWidget(keyboard_container)
         self.setLayout(layout)
 
-    def key_pressed(self, key):
-        if key == 'Space':
-            key = ' '
+        # Connect the QLineEdit mouse press event to show the keyboard
+        self.text_entry.mousePressEvent = self.show_virtual_keyboard
 
-        focused_widget = QApplication.focusWidget()
-        if focused_widget:
-            key_event = QKeyEvent(QEvent.KeyPress, 0, Qt.NoModifier, key)
-            QApplication.postEvent(focused_widget, key_event)
-            release_event = QKeyEvent(QEvent.KeyRelease, 0, Qt.NoModifier, key)
-            QApplication.postEvent(focused_widget, release_event)
 
-        print(f"Simulated key press: {key}")
+    def show_virtual_keyboard(self, event):
+        """Show the virtual keyboard directly below the text entry box."""
+        if not self.virtual_keyboard.isVisible():
+            # Get the text entry box's position relative to the parent
+            text_entry_pos = self.text_entry.mapToParent(QPoint(0, 0))
+
+            # Calculate the position for the keyboard relative to the container
+            keyboard_x = max(0, text_entry_pos.x() + self.text_entry.width() // 2 - self.virtual_keyboard.width() // 2)
+            keyboard_y = text_entry_pos.y() + self.text_entry.height() + 10
+
+            # Display the keyboard at the calculated position
+            self.virtual_keyboard.display(source=self.text_entry, x_pos=keyboard_x, y_pos=keyboard_y)
+
+            # Show the keyboard
+            self.virtual_keyboard.show()
+        else:
+            self.virtual_keyboard.hide()
+
+
+
 
 
 class SettingsWidget(QWidget):
