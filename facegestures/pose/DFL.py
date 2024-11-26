@@ -84,7 +84,7 @@ class BaseTFLiteFaceAlignment():
     def get_landmarks(self, image, detected_faces=None):
         """Predict the landmarks for each face present in the image.
 
-        This function predicts a set of 68 2D or 3D images, one for each image present.
+        This function predicts a set of 68 2D or 3D assets, one for each image present.
         If detect_faces is None the method will also run a face detector.
 
         Arguments

@@ -53,6 +53,10 @@ class SharedState:
         self.calibrating = True
         self.ear_list = []
         self.start_time = time.time()
+        self.sensitivities = {2: {"shake_threshold": 2, "nod_threshold": 2, "eyebrow_scalar": 1.2},
+                              1: {"shake_threshold": 3, "nod_threshold": 3, "eyebrow_scalar": 1.3},
+                              0: {"shake_threshold": 4, "nod_threshold": 4, "eyebrow_scalar": 1.45}}
+        self.sensitivity_level = 1
 
         # Shake/Nod detection variables
         self.SHAKE_THRESHOLD = 3
@@ -71,6 +75,15 @@ class SharedState:
 
         # Lock for thread synchronization
         self.lock = threading.Lock()
+
+    def set_sensitivity(self, sensitivity):
+        if sensitivity in self.sensitivities:
+            self.SHAKE_THRESHOLD = self.sensitivities[sensitivity]["shake_threshold"]
+            self.NOD_THRESHOLD = self.sensitivities[sensitivity]["nod_threshold"]
+            self.EYEBROW_SCALAR = self.sensitivities[sensitivity]["eyebrow_scalar"]
+            print(f"Sensitivity changed to {sensitivity}!")
+        else:
+            print(f"Invalid sensitivity level: {sensitivity}")
 
 
 def change_pages():
@@ -195,6 +208,8 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color, over
                 # Uncomment the following line to enable page change functionality
                 # change_pages()
                 shared_state.last_change_time = current_time
+            shared_state.sensitivity_level = (shared_state.sensitivity_level + 1) % 3
+            shared_state.set_sensitivity(shared_state.sensitivity_level)
 
         if nod_detected:
             if shared_state.is_page_minimized:
@@ -206,16 +221,16 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, color, over
 
 
 def main(color=(224, 255, 255)):
-    eye_gestures = EyeGestures_v2(calibration_radius=800)
+    # eye_gestures = EyeGestures_v2(calibration_radius=800)
 
     # Video capture
     cap = cv2.VideoCapture(0)
 
     screen_width, screen_height = pyautogui.size()
 
-    window_name = "Main Test"
-    cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    #window_name = "Main Test"
+    #cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
+    #cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     # Initialize detectors and predictors
     # dlib detector / predictor
@@ -245,23 +260,23 @@ def main(color=(224, 255, 255)):
 
         # frame = imutils.resize(frame, width=1200)
 
-        h, w, _ = frame.shape
+        #h, w, _ = frame.shape
 
-        gevent, cevent = eye_gestures.step(
-            frame,
-            calibration=False,
-            width=w,
-            height=h,
-            context="main"
-        )
+        #gevent, cevent = eye_gestures.step(
+        #    frame,
+        #    calibration=False,
+        #    width=w,
+        #    height=h,
+        #    context="main"
+        #)
 
-        if gevent is not None:
-            gaze_point = gevent.point  # (x, y) coordinates
+        #if gevent is not None:
+         #   gaze_point = gevent.point  # (x, y) coordinates
 
             # Display the gaze point on the frame
-            cv2.circle(frame, (int(gaze_point[0]), int(gaze_point[1])), 10, (0, 0, 0), -1)
-            cv2.putText(frame, f"Gaze: ({int(gaze_point[0])}, {int(gaze_point[1])})",
-                        (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+           # cv2.circle(frame, (int(gaze_point[0]), int(gaze_point[1])), 10, (0, 0, 0), -1)
+          #  cv2.putText(frame, f"Gaze: ({int(gaze_point[0])}, {int(gaze_point[1])})",
+         #               (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             # pyautogui.moveTo(int(gaze_point[0]), int(gaze_point[1]))
 
         # Create threads
@@ -288,7 +303,7 @@ def main(color=(224, 255, 255)):
         elif key == ord('q'):
             break
         # Display the frame
-        cv2.imshow(window_name, frame)
+        # cv2.imshow(window_name, frame)
 
     cap.release()
     cv2.destroyAllWindows()
