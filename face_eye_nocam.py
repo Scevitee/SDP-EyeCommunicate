@@ -1,3 +1,4 @@
+# main.py
 import cv2
 import sys
 import dlib
@@ -60,9 +61,14 @@ class SharedState:
         # Dictionary of dictionaries used to change how easy / hard it is to trigger different gestures
         # Higher sensitivity == 'more sensitive', i.e., easier to trigger detection
         # Should be modified based on testing
-        self.sensitivities = {"High":{"shake_threshold":3, "nod_threshold":2, "eyebrow_scalar":1.2, "ear_scalar":0.80, "gaze_time_window":30}, 
-                              "Medium":{"shake_threshold":4, "nod_threshold":3, "eyebrow_scalar":1.35, "ear_scalar":0.70, "gaze_time_window":50}, 
-                              "Low":{"shake_threshold":5, "nod_threshold":4, "eyebrow_scalar":1.45, "ear_scalar":0.60, "gaze_time_window":70}}
+        self.current_sensitivity = 0
+        self.sensitivities = {
+            2: {"shake_threshold": 3, "nod_threshold": 2, "eyebrow_scalar": 1.2, "ear_scalar": 0.80,
+                     "gaze_time_window": 30},
+            1: {"shake_threshold": 4, "nod_threshold": 3, "eyebrow_scalar": 1.35, "ear_scalar": 0.70,
+                       "gaze_time_window": 50},
+            0: {"shake_threshold": 5, "nod_threshold": 4, "eyebrow_scalar": 1.45, "ear_scalar": 0.60,
+                    "gaze_time_window": 70}}
 
         # Shake/Nod detection variables
         self.SHAKE_THRESHOLD = 4  # Number of changes from left->right to count as a shake
@@ -187,6 +193,7 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor, ove
                     shared_state.blink_counter += 1
                     shared_state.blink_display_frames = shared_state.BLINK_DISPLAY_DURATION
                     shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                    overlay.notification_signal.emit("Blink")
 
             # Eyebrow raise detection on even frames
             else:
@@ -194,6 +201,7 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor, ove
                 if eyebrow_raised and shared_state.universal_buffer_frames == 0:
                     print("Eyebrow raised!")
                     shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                    overlay.notification_signal.emit("Eyebrow raised")
 
     # Decrease the blink display frame counter
     if shared_state.blink_display_frames > 0:
@@ -233,37 +241,48 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
         if shared_state.universal_buffer_frames == 0:
             if look_left_detected:
                 print("LOOKING LEFT")
-                overlay.change_page_directional('left')
+                overlay.change_page_signal.emit('left')
+                overlay.notification_signal.emit("Page change left")
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
                 
             elif look_right_detected:
                 print("LOOKING RIGHT")
-                overlay.change_page_directional('right')
+                overlay.change_page_signal.emit('right')
+                overlay.notification_signal.emit("Page change right")
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif look_up_detected:
                 print("LOOKING UP")
-                overlay.zoom_in()
+                overlay.zoom_in_signal.emit()
+                overlay.notification_signal.emit("Zoom in")
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
                 
             elif look_down_detected:
                 print("LOOKING DOWN")
-                overlay.zoom_out()
+                overlay.zoom_out_signal.emit()
+                overlay.notification_signal.emit("Zoom out")
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
             
             elif shake_detected:
-                print("SHAKE DETECTED")                
+                print("SHAKE DETECTED")    
+                shared_state.current_sensitivity = (shared_state.current_sensitivity + 1) % 3
+                shared_state.setSensitivity(shared_state.current_sensitivity)
+                message = f"Sensitivity: {['Low', 'Medium', 'High'][shared_state.current_sensitivity]}"
+                overlay.notification_signal.emit(message)
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
             
             elif nod_detected:
                 print("NOD DETECTED")
-                overlay.toggle_pin()                
+                overlay.toggle_pin_signal.emit()
+                overlay.notification_signal.emit("Toggled pin")
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
     # Decrease the universal buffer frames
     if shared_state.universal_buffer_frames > 0:
         shared_state.universal_buffer_frames -= 1
 
+
+    # def eyetracking() ..
 
 def main():
     eye_gestures = EyeGestures_v2(calibration_radius=400)
@@ -287,6 +306,7 @@ def main():
     overlay = Overlay()
     overlay.show()
     overlay.destroyed.connect(app.quit)  # Ensures the program exits when the overlay is closed
+
 
     # Function to process frames in a separate thread
     # print("entering main loop")
@@ -320,14 +340,18 @@ def main():
         # Create threads
         t1 = threading.Thread(target=face_and_blink_detection, args=(frame, gray, shared_state, detector, predictor, overlay))
         t2 = threading.Thread(target=pose_estimation_and_shake_nod_detection, args=(frame, shared_state, fa, overlay))
+        # t3 = threading.Thread(target = eyetracking())
+
 
         # Start threads
         t1.start()
         t2.start()
+        # t3.start()
 
         # Wait for threads to finish
         t1.join()
         t2.join()
+        # t3.join
 
 
         # Process PyQt events

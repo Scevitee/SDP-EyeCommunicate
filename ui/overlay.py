@@ -1,6 +1,5 @@
-# enhanced_ui.py
 import sys
-from PyQt5.QtCore import Qt, QPoint, QSize, QEvent, QTimer
+from PyQt5.QtCore import Qt, QPoint, QSize, QEvent, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,
     QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory, QLineEdit
@@ -11,7 +10,16 @@ from .art_program.art_canvas import ArtWidget
 from .tts.virtual_keyboard import AlphaNeumericVirtualKeyboard as VKeyboard
 
 
+
+
 class Overlay(QWidget):
+    # Define signals
+    notification_signal = pyqtSignal(str)
+    change_page_signal = pyqtSignal(str)
+    zoom_in_signal = pyqtSignal()
+    zoom_out_signal = pyqtSignal()
+    toggle_pin_signal = pyqtSignal()
+
     def __init__(self):
         super().__init__()
 
@@ -53,8 +61,30 @@ class Overlay(QWidget):
         self.button_layout = QHBoxLayout()
         self.button_layout.setContentsMargins(0, 0, 0, 0)
         self.button_layout.setSpacing(10)
+        self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
 
-        # Spacer to center the buttons
+        # Spacer to center the buttons (removed to place notification bubble)
+        # self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
+
+        # Add a notification label (notification bubble)
+        self.notification_label = QLabel(self)
+        self.notification_label.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                color: red;
+                font-size: 16px;
+                padding: 4px;
+                border-radius: 5px;
+            }
+        """)
+        self.notification_label.setFixedHeight(50)
+        self.notification_label.setAlignment(Qt.AlignCenter)
+        self.notification_label.setFixedWidth(200)  # Adjust as needed
+
+        # Add the notification label to the button layout
+        self.button_layout.addWidget(self.notification_label)
+
+        # Spacer between notification and buttons
         self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
 
         # Add a pin button
@@ -97,6 +127,13 @@ class Overlay(QWidget):
         ]
         self.current_widget_index = 0  # Starting index
 
+        # Add the buttons to the layout
+        self.button_layout.addWidget(self.toggle_button)
+        self.button_layout.addWidget(self.close_button)
+        self.button_layout.addWidget(self.settings_button)
+        self.button_layout.addWidget(self.drawing_button)
+        self.button_layout.addWidget(self.keyboard_button)
+
         # Spacer to center the buttons
         self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
 
@@ -104,7 +141,7 @@ class Overlay(QWidget):
         self.layout.addLayout(self.button_layout)
 
         # Create the eyeball button (icon) for minimized state
-        self.eyeball_button = QPushButton(self)
+        self.eyeball_button = DraggableButton(self)
         eyeball_icon = QIcon("assets/eyecomm.png")
         self.eyeball_button.setIcon(eyeball_icon)
         self.eyeball_button.setIconSize(QSize(75, 75))  # Adjust size as needed
@@ -123,10 +160,6 @@ class Overlay(QWidget):
         self.eyeball_button.hide()  # Initially hidden
         self.layout.addWidget(self.eyeball_button, alignment=Qt.AlignCenter)
 
-        # Variables for dragging
-        self.is_dragging = False
-        self.drag_start_position = QPoint(0, 0)
-        
         self.is_open = True
         
         # Initialize zoom variables
@@ -140,6 +173,16 @@ class Overlay(QWidget):
 
         # Apply styling
         self.apply_styles()
+
+        # Connect signals to methods
+        self.notification_signal.connect(self.display_notification)
+        self.change_page_signal.connect(self.change_page_directional)
+        self.zoom_in_signal.connect(self.zoom_in)
+        self.zoom_out_signal.connect(self.zoom_out)
+        self.toggle_pin_signal.connect(self.toggle_pin)
+
+        self.dragging_window = False
+        self.drag_start_position_window = QPoint()
 
     def setup_button(self, button, icon, callback):
         button.setIcon(icon)
@@ -156,7 +199,19 @@ class Overlay(QWidget):
                 background-color: #4c566a;
             }
         """)
-        self.button_layout.addWidget(button)
+        # Add the button to the layout (if not already added)
+        if button not in self.button_layout.children():
+            self.button_layout.addWidget(button)
+
+    def display_notification(self, message):
+        # Update the notification label with the message
+        self.notification_label.setText(message)
+
+        # Optionally, set a timer to clear the message after some time
+        QTimer.singleShot(3000, self.clear_notification)
+
+    def clear_notification(self):
+        self.notification_label.setText('')
 
     def toggleMinimize(self):
         if self.is_open:
@@ -224,6 +279,7 @@ class Overlay(QWidget):
         result = confirmation_dialog.exec_()
         if result == QMessageBox.Yes:
             sys.exit(0)
+            
 
     def show_settings(self):
         self.stacked_widget.setCurrentWidget(self.settings_widget)
@@ -236,22 +292,6 @@ class Overlay(QWidget):
     def show_keyboard(self):
         self.stacked_widget.setCurrentWidget(self.keyboard_widget)
         self.update_button_styles()
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.is_dragging = True
-            self.drag_start_position = event.globalPos() - self.frameGeometry().topLeft()
-            event.accept()
-
-    def mouseMoveEvent(self, event):
-        if self.is_dragging:
-            self.move(event.globalPos() - self.drag_start_position)
-            event.accept()
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.is_dragging = False
-            event.accept()
 
     def adjust_font_sizes(self):
         if not self.is_pinned:
@@ -296,6 +336,7 @@ class Overlay(QWidget):
     def zoom_in(self):
         if self.zoom_scale < self.max_zoom:
             self.zoom_scale += self.zoom_step
+            self.update()        
             self.apply_zoom()
                         
     def zoom_out(self):
@@ -354,6 +395,28 @@ class Overlay(QWidget):
             
         else:
             super().keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.dragging_window = True
+            self.drag_start_position_window = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.dragging_window and event.buttons() & Qt.LeftButton:
+            self.move(event.globalPos() - self.drag_start_position_window)
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.dragging_window:
+            self.dragging_window = False
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
 
 
 class KeyboardWidget(QWidget):
@@ -441,6 +504,37 @@ class SettingsWidget(QWidget):
 
         layout.addStretch()
         self.setLayout(layout)
+
+class DraggableButton(QPushButton):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.dragging = False
+        self.drag_start_position = QPoint()
+        self.parent_widget = parent
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.dragging = False
+            self.drag_start_position = event.globalPos()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() & Qt.LeftButton:
+            distance = (event.globalPos() - self.drag_start_position).manhattanLength()
+            if distance > QApplication.startDragDistance():
+                self.dragging = True
+            if self.dragging:
+                delta = event.globalPos() - self.drag_start_position
+                self.parent_widget.move(self.parent_widget.pos() + delta)
+                self.drag_start_position = event.globalPos()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self.dragging:
+            self.dragging = False
+        else:
+            super().mouseReleaseEvent(event)
 
 
 if __name__ == '__main__':
