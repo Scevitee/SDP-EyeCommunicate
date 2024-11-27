@@ -31,9 +31,7 @@
 - **Hold Blink** → *TBD*  
 
 ---
-
-## 🔧 Setup Instructions
-
+## <a id="setup-instructions"></a> 🔧 Setup Instructions
 EyeCommunicate is designed to work with **Python 3.9**. Follow these steps to set up the application:
 
 1. Create a virtual environment:
