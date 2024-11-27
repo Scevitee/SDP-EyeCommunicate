@@ -40,8 +40,9 @@ class Overlay(QWidget):
         self.default_label.setAlignment(Qt.AlignCenter)
         self.stacked_widget.addWidget(self.default_label)
 
-        self.settings_widget = SettingsWidget(self)
-        self.stacked_widget.addWidget(self.settings_widget)
+        # Not implementing settings at this time
+        # self.settings_widget = SettingsWidget(self)
+        # self.stacked_widget.addWidget(self.settings_widget)
 
         self.drawing_widget = ArtWidget()
         self.stacked_widget.addWidget(self.drawing_widget)
@@ -67,10 +68,15 @@ class Overlay(QWidget):
         power_icon = QIcon("assets/power_button.png")
         self.setup_button(self.close_button, power_icon, self.show_confirmation_dialog)
 
-        # Add a settings button
-        self.settings_button = QPushButton(self)
-        settings_icon = QIcon("assets/settings_icon.png")
-        self.setup_button(self.settings_button, settings_icon, self.show_settings)
+        # Removed settings button
+        # self.settings_button = QPushButton(self)
+        # settings_icon = QIcon("assets/settings_icon.png")
+        # self.setup_button(self.settings_button, settings_icon, self.show_settings)
+
+        # Add a home button
+        self.home_button = QPushButton(self)
+        home_icon = QIcon("assets/home_icon.png")
+        self.setup_button(self.home_button, home_icon, self.show_homepage)
 
         # Add a drawing button
         self.drawing_button = QPushButton(self)
@@ -82,16 +88,15 @@ class Overlay(QWidget):
         keyboard_icon = QIcon("assets/tts_icon.png")
         self.setup_button(self.keyboard_button, keyboard_icon, self.show_keyboard)
 
+        # Updated widget_button_mapping without settings_widget and with home_button
         self.widget_button_mapping = {
-            self.default_label: None,  # No button corresponds to the default label
-            self.settings_widget: self.settings_button,
+            self.default_label: self.home_button,  # Home button corresponds to default label
             self.drawing_widget: self.drawing_button,
             self.keyboard_widget: self.keyboard_button
         }
-        # List of widgets to cycle through
+        # Updated list of widgets to cycle through
         self.widget_list = [
             self.default_label,
-            self.settings_widget,
             self.drawing_widget,
             self.keyboard_widget
         ]
@@ -225,8 +230,13 @@ class Overlay(QWidget):
         if result == QMessageBox.Yes:
             sys.exit(0)
 
-    def show_settings(self):
-        self.stacked_widget.setCurrentWidget(self.settings_widget)
+    # Not needed for now
+    # def show_settings(self):
+    #     self.stacked_widget.setCurrentWidget(self.settings_widget)
+    #     self.update_button_styles()
+
+    def show_homepage(self):
+        self.stacked_widget.setCurrentWidget(self.default_label)
         self.update_button_styles()
 
     def show_drawing_canvas(self):
@@ -307,7 +317,7 @@ class Overlay(QWidget):
         
     def update_button_styles(self):
         # List of buttons that correspond to widgets
-        buttons = [self.settings_button, self.drawing_button, self.keyboard_button]
+        buttons = [self.home_button, self.drawing_button, self.keyboard_button]
 
         # Reset styles for all buttons
         for button in buttons:
@@ -421,26 +431,26 @@ class KeyboardWidget(QWidget):
 
 
 
+# Not needed currently
+# class SettingsWidget(QWidget):
+#     def __init__(self, parent=None):
+#         super().__init__(parent)
 
-class SettingsWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+#         layout = QVBoxLayout(self)
+#         layout.setContentsMargins(10, 10, 10, 10)
+#         layout.setSpacing(10)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+#         label = QLabel("Settings", self)
+#         label.setStyleSheet("font-size: 24px; font-weight: bold; color: #ECEFF4;")
+#         layout.addWidget(label)
 
-        label = QLabel("Settings", self)
-        label.setStyleSheet("font-size: 24px; font-weight: bold; color: #ECEFF4;")
-        layout.addWidget(label)
+#         # Placeholder for settings options
+#         settings_label = QLabel("Settings options will go here.", self)
+#         settings_label.setStyleSheet("font-size: 16px; color: #ECEFF4;")
+#         layout.addWidget(settings_label)
 
-        # Placeholder for settings options
-        settings_label = QLabel("Settings options will go here.", self)
-        settings_label.setStyleSheet("font-size: 16px; color: #ECEFF4;")
-        layout.addWidget(settings_label)
-
-        layout.addStretch()
-        self.setLayout(layout)
+#         layout.addStretch()
+#         self.setLayout(layout)
 
 
 if __name__ == '__main__':
