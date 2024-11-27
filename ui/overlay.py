@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,
     QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory
 )
-from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent
+from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent, QPixmap
 
 
 class Overlay(QWidget):
@@ -31,11 +31,42 @@ class Overlay(QWidget):
         self.stacked_widget = QStackedWidget(self)
         self.layout.addWidget(self.stacked_widget)
 
+        # Create a vertical layout to stack labels vertically
+        welcome_layout = QVBoxLayout()
+
         # Create instances of the different UI elements
         self.default_label = QLabel('Welcome to EyeCommunicate', self)
         self.default_label.setStyleSheet("color: white; font-size: 24px; font-weight: bold;")
         self.default_label.setAlignment(Qt.AlignCenter)
-        self.stacked_widget.addWidget(self.default_label)
+
+        self.photo = QLabel()
+        pixmap = QPixmap('assets/eyecomm.png')
+        self.photo.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.photo.setStyleSheet("color: white; font-size: 14px; margin-bottom: 12px;")
+        self.photo.setAlignment(Qt.AlignCenter)
+
+        # Create subtitle labels
+        self.instructions_label = QLabel('<b>Look Up</b> to Zoom Out<br><br>'
+                                      '<b>Look Down</b> to Zoom In<br><br>'
+                                      '<b>Nod Head</b> to <b>Collapse</b> or <b>Expand</b> the UI<br><br>'
+                                      '<b>Shake Head</b> (left, right) to Adjust Sensitivity<br><br>'
+                                      '<b>Look Left</b> to Change Page in the <b>Left</b> direction<br><br>'
+                                      '<b>Look Right</b> to Change Page in the <b>Right</b> direction<br><br>'
+                                      '<b>Raise Eyebrow</b> to Press Enter<br><br><br>')
+        self.instructions_label.setStyleSheet("color: rgba(255, 255, 255, 200); font-size: 14px;")
+        self.instructions_label.setTextFormat(Qt.RichText)
+        self.instructions_label.setAlignment(Qt.AlignCenter)
+
+        # Add all labels to the layout
+        welcome_layout.addWidget(self.default_label)
+        welcome_layout.addWidget(self.photo)
+        welcome_layout.addWidget(self.instructions_label)
+
+        # Create a widget to hold the layout
+        self.welcome_widget = QWidget()
+        self.welcome_widget.setLayout(welcome_layout)
+
+        self.stacked_widget.addWidget(self.welcome_widget)
 
         self.settings_widget = SettingsWidget(self)
         self.stacked_widget.addWidget(self.settings_widget)
@@ -80,14 +111,14 @@ class Overlay(QWidget):
         self.setup_button(self.keyboard_button, keyboard_icon, self.show_keyboard)
 
         self.widget_button_mapping = {
-            self.default_label: None,  # No button corresponds to the default label
+            self.welcome_widget: None,  # No button corresponds to the default label
             self.settings_widget: self.settings_button,
             self.drawing_widget: self.drawing_button,
             self.keyboard_widget: self.keyboard_button
         }
         # List of widgets to cycle through
         self.widget_list = [
-            self.default_label,
+            self.welcome_widget,
             self.settings_widget,
             self.drawing_widget,
             self.keyboard_widget
@@ -133,7 +164,7 @@ class Overlay(QWidget):
         self.min_zoom = 0.2
 
         # Set the default widget to display
-        self.stacked_widget.setCurrentWidget(self.default_label)
+        self.stacked_widget.setCurrentWidget(self.welcome_widget)
 
         # Apply styling
         self.apply_styles()
@@ -236,7 +267,7 @@ class Overlay(QWidget):
         message_box.setIcon(QMessageBox.Information)
         message_box.setWindowTitle("Setting Change")
         message_box.setText(message)
-        message_box.setStandardButtons(QMessageBox.Close)  # No buttons for auto-close
+        # message_box.setStandardButtons(QMessageBox.Close)  # No buttons for auto-close
 
         QTimer.singleShot(3000, message_box.close)  # 3000 ms = 3 seconds
 
