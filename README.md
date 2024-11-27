@@ -104,7 +104,7 @@ Setup instructions may vary depending on your operating system:
       ```
 
    #### **7. Deactivate the Application**
-   - When finished, deactive the virtual environment:
+   - When finished, deactive the virtual environment from your terminal:
       ```
       deactivate
       ```
