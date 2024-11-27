@@ -70,9 +70,8 @@ Setup instructions may vary depending on your operating system:
          ```
       - Clone the repository:
          ```bash
-         git clone https://github.com/yourusername/EyeCommunicate.git
+         git clone https://github.com/Scevitee/SDP-EyeCommunicate.git
          ```
-      - Replace `yourusername` with the actual GitHub username.
 
    #### **3. Create a Virtual Environment**
    - Refer to the [Setup Instructions](#setup-instructions) section above.
