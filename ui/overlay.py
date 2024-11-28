@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,
     QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory, QLineEdit
 )
-from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent
+from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent, QPixmap
 
 from .art_program.art_canvas import ArtWidget
 from .tts.virtual_keyboard import AlphaNeumericVirtualKeyboard as VKeyboard
@@ -41,15 +41,49 @@ class Overlay(QWidget):
         # Create a stacked widget to switch between different UI elements
         self.stacked_widget = QStackedWidget(self)
         self.layout.addWidget(self.stacked_widget)
+        
+        home_layout = QVBoxLayout()
 
         # Create instances of the different UI elements
         self.default_label = QLabel('Welcome to EyeCommunicate', self)
         self.default_label.setStyleSheet("color: white; font-size: 24px; font-weight: bold;")
         self.default_label.setAlignment(Qt.AlignCenter)
-        self.stacked_widget.addWidget(self.default_label)
+        
+        self.photo = QLabel()
+        pixmap = QPixmap('assets/eyecomm.png')
+        self.photo.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.photo.setStyleSheet("color: white; font-size: 14px; margin-bottom: 12px;")
+        self.photo.setAlignment(Qt.AlignCenter)
 
-        self.settings_widget = SettingsWidget(self)
-        self.stacked_widget.addWidget(self.settings_widget)
+        # Create subtitle labels
+        self.instructions_label = QLabel('<b>Look Up</b> to Zoom Out<br><br>'
+                                      '<b>Look Down</b> to Zoom In<br><br>'
+                                      '<b>Nod Head</b> to <b>Collapse</b> or <b>Expand</b> the UI<br><br>'
+                                      '<b>Shake Head</b> (left, right) to Adjust Sensitivity<br><br>'
+                                      '<b>Look Left</b> to Change Page in the <b>Left</b> direction<br><br>'
+                                      '<b>Look Right</b> to Change Page in the <b>Right</b> direction<br><br>'
+                                      '<b>Raise Eyebrow</b> to Press Enter<br><br><br>')
+        self.instructions_label.setStyleSheet("color: rgba(255, 255, 255, 200); font-size: 14px;")
+        self.instructions_label.setTextFormat(Qt.RichText)
+        self.instructions_label.setAlignment(Qt.AlignCenter)
+
+        # Add all labels to the layout
+        home_layout.addWidget(self.default_label)
+        home_layout.addWidget(self.photo)
+        home_layout.addWidget(self.instructions_label)
+
+        # Create a widget to hold the layout
+        self.home_widget = QWidget()
+        self.home_widget.setLayout(home_layout)
+        
+        
+        self.stacked_widget.addWidget(self.home_widget)
+        
+        
+        # self.stacked_widget.addWidget(self.default_label)
+
+        # self.settings_widget = SettingsWidget(self)
+        # self.stacked_widget.addWidget(self.settings_widget)
 
         self.drawing_widget = ArtWidget()
         self.stacked_widget.addWidget(self.drawing_widget)
@@ -98,9 +132,13 @@ class Overlay(QWidget):
         self.setup_button(self.close_button, power_icon, self.show_confirmation_dialog)
 
         # Add a settings button
-        self.settings_button = QPushButton(self)
-        settings_icon = QIcon("assets/settings_icon.png")
-        self.setup_button(self.settings_button, settings_icon, self.show_settings)
+        # self.settings_button = QPushButton(self)
+        # settings_icon = QIcon("assets/settings_icon.png")
+        # self.setup_button(self.settings_button, settings_icon, self.show_settings)
+        
+        self.home_button = QPushButton(self)
+        home_icon  = QIcon("assets/home_icon.png")
+        self.setup_button(self.home_button, home_icon, self.show_homepage)
 
         # Add a drawing button
         self.drawing_button = QPushButton(self)
@@ -113,15 +151,13 @@ class Overlay(QWidget):
         self.setup_button(self.keyboard_button, keyboard_icon, self.show_keyboard)
 
         self.widget_button_mapping = {
-            self.default_label: None,  # No button corresponds to the default label
-            self.settings_widget: self.settings_button,
+            self.home_widget: self.home_button,
             self.drawing_widget: self.drawing_button,
             self.keyboard_widget: self.keyboard_button
         }
         # List of widgets to cycle through
         self.widget_list = [
-            self.default_label,
-            self.settings_widget,
+            self.home_widget,
             self.drawing_widget,
             self.keyboard_widget
         ]
@@ -130,7 +166,7 @@ class Overlay(QWidget):
         # Add the buttons to the layout
         self.button_layout.addWidget(self.toggle_button)
         self.button_layout.addWidget(self.close_button)
-        self.button_layout.addWidget(self.settings_button)
+        self.button_layout.addWidget(self.home_button)
         self.button_layout.addWidget(self.drawing_button)
         self.button_layout.addWidget(self.keyboard_button)
 
@@ -280,10 +316,14 @@ class Overlay(QWidget):
         if result == QMessageBox.Yes:
             sys.exit(0)
             
-
-    def show_settings(self):
-        self.stacked_widget.setCurrentWidget(self.settings_widget)
+    def show_homepage(self):
+        self.stacked_widget.setCurrentWidget(self.home_widget)
         self.update_button_styles()
+
+
+    # def show_settings(self):
+    #     self.stacked_widget.setCurrentWidget(self.settings_widget)
+    #     self.update_button_styles()
 
     def show_drawing_canvas(self):
         self.stacked_widget.setCurrentWidget(self.drawing_widget)
@@ -348,7 +388,7 @@ class Overlay(QWidget):
         
     def update_button_styles(self):
         # List of buttons that correspond to widgets
-        buttons = [self.settings_button, self.drawing_button, self.keyboard_button]
+        buttons = [self.home_button, self.drawing_button, self.keyboard_button]
 
         # Reset styles for all buttons
         for button in buttons:

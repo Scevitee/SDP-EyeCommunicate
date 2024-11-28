@@ -9,9 +9,10 @@ import pyautogui
 def main():
 
     cap = VideoCapture(0)  # Use the default webcam
-    # eye_gestures = Calibrate(cap, screen_width, screen_height)
 
+    framerate = 60
     radius = 500
+
     eye_gestures = EyeGestures_v2(radius)
     eye_gestures.setClassicalImpact(2)
     eye_gestures.setFixation(1.0)
@@ -26,10 +27,10 @@ def main():
     # Get the display dimensions
     screen_info = pygame.display.Info()
     screen_width = screen_info.current_w
-    screen_height = screen_info.current_h
+    screen_height = screen_info.current_h 
 
     # RED = (255, 0, 100)
-    # GREEN = (0, 255, 0)
+    GREEN = (0, 255, 0)
     # BLANK = (0, 0, 0)
     BLUE = (100, 0, 255)
     WHITE = (255, 255, 255)
@@ -41,6 +42,8 @@ def main():
     font_size = 48
     bold_font = pygame.font.Font(None, font_size)
     bold_font.set_bold(True)  # Set the font to bold
+
+    clock = pygame.time.Clock()
 
     pyautogui.FAILSAFE = False
 
@@ -67,30 +70,24 @@ def main():
             context="main"
         )
 
-        # print("radius: ", radius)
-        # print("Calibration point: ", cevent.point)
-        # print("Gaze point: ", gevent.point)
-
         if gevent is not None and not calib:
             gaze_point = gevent.point  # (x, y) coordinates
-            # Display the gaze point on the frame
+            print(gaze_point)
             pyautogui.moveTo(int(gaze_point[0]), int(gaze_point[1]))  # add this in when it is more stable
-        elif not calib and end_calib:
-            pygame.quit()
-            end_calib = False
+            if end_calib:
+                pygame.quit()
+                end_calib = False
         elif calib:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    pygame.quit()
                     track = False
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q and pygame.key.get_mods() & pygame.KMOD_CTRL:
-                        pygame.quit()
+                    if event.key == pygame.K_q:
                         track = False
 
             screen.fill((0, 0, 0))
-            # this section is to display the camera frames
-            # uncomment the numpy import at the top as well for use
+            # # this section is to display the camera frames
+            # # uncomment the numpy import at the top as well for use
             # frame = np.rot90(frame)
             # frame = pygame.surfarray.make_surface(frame)
             # frame = pygame.transform.scale(frame, (400, 400))
@@ -105,7 +102,12 @@ def main():
             screen.blit(text_surface, text_square)
 
             pygame.draw.circle(screen, BLUE, cevent.point, cevent.acceptance_radius)
-            pygame.draw.circle(screen, BLUE, gevent.point, 50)
+            pygame.draw.circle(screen, GREEN, gevent.point, 50)
+
+            text_surface = bold_font.render(f"{iterator}/{25}", True, WHITE)
+            text_square = text_surface.get_rect(center=cevent.point)
+            screen.blit(text_surface, text_square)
+
 
             if cevent.point[0] != prev_x or cevent.point[1] != prev_y:
                 iterator += 1
@@ -114,6 +116,11 @@ def main():
 
             calib = (iterator <= 25)
             pygame.display.flip()
+
+        clock.tick(framerate)
+
+    pygame.quit()
+    # print("QUITTING PYGAME")
 
 
 
