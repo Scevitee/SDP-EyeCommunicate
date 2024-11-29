@@ -90,6 +90,7 @@ class SharedState:
 
         # Universal buffer duration and counter
         self.UNIVERSAL_BUFFER_DURATION = 50
+        self.KEYBOARD_BUFFER_DURATION = 15
         self.universal_buffer_frames = 0
 
     # Choose from some default sensitivity levels
@@ -202,8 +203,11 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor, ove
                     if overlay.keyboard_widget.is_keyboard_open:
                         if overlay.keyboard_widget.virtual_keyboard.hovered_key == 'Close':
                             overlay.keyboard_widget.is_keyboard_open = False
+
                         overlay.keyboard_widget.virtual_keyboard.simulate_key_press(overlay.keyboard_widget.virtual_keyboard.hovered_key)
-                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                        shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
+                    else:
+                        shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
     # Decrease the blink display frame counter
     if shared_state.blink_display_frames > 0:
@@ -245,36 +249,37 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
                 print("LOOKING LEFT")
                 if overlay.keyboard_widget.is_keyboard_open:
                     overlay.keyboard_widget.virtual_keyboard.move_hover_left()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
                 else:
                     overlay.change_page_directional('left')
-
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif look_right_detected:
                 print("LOOKING RIGHT")
                 if overlay.keyboard_widget.is_keyboard_open:
                     overlay.keyboard_widget.virtual_keyboard.move_hover_right()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
                 else:
                     overlay.change_page_directional('right')
-
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif look_up_detected:
                 print("LOOKING UP")
                 if overlay.keyboard_widget.is_keyboard_open:
                     overlay.keyboard_widget.virtual_keyboard.move_hover_up()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
                 else:
                     overlay.zoom_in()
-
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif look_down_detected:
                 print("LOOKING DOWN")
                 if overlay.keyboard_widget.is_keyboard_open:
                     overlay.keyboard_widget.virtual_keyboard.move_hover_down()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
                 else:
                     overlay.zoom_out()
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif shake_detected:
                 print("SHAKE DETECTED")
