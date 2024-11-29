@@ -5,7 +5,7 @@ virtual keyboard from https://github.com/sanjivktr/PyQt5-Virtual-Keyboard/tree/m
 from PyQt5 import QtWidgets, QtGui, QtCore
 import threading
 import time
-
+from .tts_main import TTSEngine
 
 class KeyButton(QtWidgets.QPushButton):
     """ KeyButton class to be used by AlphaNeumericVirtualKeyboard class
@@ -72,6 +72,7 @@ class KeyButton(QtWidgets.QPushButton):
 class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
     """ AlphaNeumericVirtualKeyboard class
     """
+
     def __init__(self, source, x_pos=0, y_pos=0, parent=None):
         """ AlphaNeumericVirtualKeyboard class constructor
 
@@ -86,6 +87,10 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
         parent : QWidget, optional
             Parent widget (the default is None)
         """
+
+        # Initialize TTS Engine
+        self.tts_engine = TTSEngine()
+
         super(AlphaNeumericVirtualKeyboard, self).__init__(parent)
 
         self.setWindowState(QtCore.Qt.WindowFullScreen)
@@ -160,6 +165,13 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
     def hide(self, animation=False):
         QtWidgets.QWidget.hide(self)
         self.isHidden = True
+
+    def read_aloud(self):
+        """Read aloud the text from the source."""
+        if isinstance(self.source, (QtWidgets.QLineEdit, QtWidgets.QTextEdit)):
+            text = self.source.text() if isinstance(self.source, QtWidgets.QLineEdit) else self.source.toPlainText()
+            self.tts_engine.speak(text)
+
 
     def open_symbol(self):
         keys = None
@@ -364,17 +376,12 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
                     pass
 
     def add_input_by_key(self, key):
-        """ AlphaNeumericVirtualKeyboard class method to update lineedit when a key is pressed
-
-        Parameters
-        ----------
-        key : str
-            key to be added to the lineedit
-        """
+        """Update the input source when a key is pressed."""
         if not self.source:
             return
 
         key_to_add = self.get_key(key)
+
         if isinstance(self.source, QtWidgets.QGraphicsTextItem):
             cursor = self.source.textCursor()
             start = cursor.selectionStart()
@@ -385,8 +392,9 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
                 end = temp
 
             input_text = self.source.toPlainText()
-            if(key_to_add == '  '):
+            if key_to_add == '  ':  # Enter key
                 key_to_add = "\n"
+                self.read_aloud()  # Trigger speech
             output_string = input_text[:start] + key_to_add + input_text[end:]
             self.source.setPlainText(output_string)
             new_cursor = QtGui.QTextCursor(cursor)
@@ -395,11 +403,12 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
             if self.callback_method:
                 self.callback_method("textChange")
         else:
-            if(key_to_add == '  '):
+            if key_to_add == '  ':  # Enter key
                 eventPress = QtGui.QKeyEvent(QtCore.QEvent.KeyPress, QtCore.Qt.Key_Enter, QtCore.Qt.NoModifier)
                 QtCore.QCoreApplication.postEvent(self.source, eventPress)
                 eventRelease = QtGui.QKeyEvent(QtCore.QEvent.KeyRelease, QtCore.Qt.Key_Enter, QtCore.Qt.NoModifier)
                 QtCore.QCoreApplication.postEvent(self.source, eventRelease)
+                self.read_aloud()  # Trigger speech
                 return
             else:
                 if self.constraint == self.fractionNumber and "." in self.source.text() and key_to_add == ".":
@@ -409,6 +418,7 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
                 eventRelease = QtGui.QKeyEvent(QtCore.QEvent.KeyRelease, QtCore.Qt.Key_1, QtCore.Qt.NoModifier, key_to_add)
                 QtCore.QCoreApplication.postEvent(self.source, eventRelease)
                 return
+
 
     def backspace(self):
         """ AlphaNeumericVirtualKeyboard class method to do backspace
