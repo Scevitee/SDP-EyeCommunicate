@@ -54,7 +54,7 @@ def main():
 
     # Pre-calibration message
     pre_calibration_message_line1 = "Hello! Your eye-tracking calibration is about to begin."
-    pre_calibration_message_line2 = "Please try to keep your head as still as possible and focus on the number in the center of the dots."
+    pre_calibration_message_line2 = "Please try to keep your head as still as possible and focus on the number in the centers of the dots."
     countdown = 6
 
     # Display pre-calibration message with countdown

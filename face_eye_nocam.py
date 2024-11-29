@@ -5,6 +5,7 @@ import dlib
 import numpy as np
 import imutils
 import sys
+import pygame
 import time
 import pyautogui
 import threading
@@ -281,18 +282,169 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
     if shared_state.universal_buffer_frames > 0:
         shared_state.universal_buffer_frames -= 1
 
+def eye_tracking(frame, eye_gestures, screen_width, screen_height):
+    
+    
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    gevent, _ = eye_gestures.step(
+        frame,
+        calibration=False,
+        width=screen_width,
+        height=screen_height,
+        context="main"
+    )
 
-    # def eyetracking() ..
+    if gevent is not None:
+        gaze_point = gevent.point  # (x, y) coordinates
+        # Ensure the gaze point is within screen bounds
+        x = min(max(int(gaze_point[0]), 0), screen_width - 1)
+        y = min(max(int(gaze_point[1]), 0), screen_height - 1)
+        pyautogui.moveTo(x, y)
+
+
+
+# def eyetracking() ..
 
 def main():
-    eye_gestures = EyeGestures_v2(calibration_radius=400)
 
     # Video capture
     cap = cv2.VideoCapture(0)
 
-    screen_width, screen_height = pyautogui.size()
+    framerate = 60
+    radius = 500
+    total_iterations = 25  # Total number of calibration points
 
+
+    eye_gestures = EyeGestures_v2(radius)
+    eye_gestures.setClassicalImpact(2)
+    eye_gestures.setFixation(1.0)
+
+    # Initialize Pygame
+    pygame.init()
+    pygame.font.init()
+
+    # Get the display dimensions
+    screen_info = pygame.display.Info()
+    screen_width = screen_info.current_w
+    screen_height = screen_info.current_h
     # Initialize detectors and predictors
+    
+    # Define colors
+    BACKGROUND_COLOR = (30, 30, 30)
+    CALIBRATION_POINT_COLOR = (50, 49, 121)
+    GAZE_POINT_COLOR = (80, 200, 120)
+    TEXT_COLOR = (185, 185, 185)
+    
+    # Set up the screen
+    screen = pygame.display.set_mode((screen_width, screen_height), pygame.FULLSCREEN)
+    pygame.display.set_caption("Eye Tracker Calibration")
+
+    # Load fonts with custom sizes
+    font_size = 80  # Increase the font size for the pre-calibration message
+    bold_font_size = 90  # Increase the font size for the countdown
+    font = pygame.font.Font(None, font_size)
+    bold_font = pygame.font.Font(None, bold_font_size)
+    bold_font.set_bold(True)
+
+    clock = pygame.time.Clock()
+
+    # Optimize PyAutoGUI
+    pyautogui.FAILSAFE = False
+    pyautogui.PAUSE = 0
+
+    iterator = 1
+    prev_x = 0
+    prev_y = 0
+
+    # Pre-calibration message
+    pre_calibration_message_line1 = "Hello! Your eye-tracking calibration is about to begin."
+    pre_calibration_message_line2 = "Please try to keep your head as still as possible and focus on the number in the centers of the dots."
+    countdown = 6
+
+    # Display pre-calibration message with countdown
+    for i in range(countdown, -1, -1):
+        screen.fill(BACKGROUND_COLOR)
+        
+        # Render the first line of the pre-calibration message
+        message_surface_line1 = font.render(pre_calibration_message_line1, True, TEXT_COLOR)
+        message_rect_line1 = message_surface_line1.get_rect(center=(screen_width // 2, screen_height // 2 - 100))
+        screen.blit(message_surface_line1, message_rect_line1)
+        
+        # Render the second line of the pre-calibration message
+        message_surface_line2 = font.render(pre_calibration_message_line2, True, TEXT_COLOR)
+        message_rect_line2 = message_surface_line2.get_rect(center=(screen_width // 2, screen_height // 2 - 40))
+        screen.blit(message_surface_line2, message_rect_line2)
+        
+        # Render the countdown
+        countdown_surface = bold_font.render(str(i), True, TEXT_COLOR)
+        countdown_rect = countdown_surface.get_rect(center=(screen_width // 2, screen_height // 2 + 50))
+        screen.blit(countdown_surface, countdown_rect)
+        
+        pygame.display.flip()
+        time.sleep(1)
+
+    calibrating = True
+
+    # Calibration Loop
+    while calibrating:
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to grab frame")
+            break
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        gevent, cevent = eye_gestures.step(
+            frame,
+            calibration=True,
+            width=screen_width,
+            height=screen_height,
+            context="main"
+        )
+
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                calibrating = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    calibrating = False
+
+        # Calibration display
+        screen.fill(BACKGROUND_COLOR)
+
+        # Draw calibration point
+        pygame.draw.circle(screen, CALIBRATION_POINT_COLOR, cevent.point, cevent.acceptance_radius)
+
+        # Draw gaze point
+        pygame.draw.circle(screen, GAZE_POINT_COLOR, gevent.point, 30)
+
+        # Display iterator number in the center of the calibration point
+        iterator_text = f"{iterator}/{total_iterations}"
+        text_surface = bold_font.render(iterator_text, True, TEXT_COLOR)
+        text_rect = text_surface.get_rect(center=cevent.point)
+        screen.blit(text_surface, text_rect)
+
+        # Display instructions at the top
+        instructions = "Focus on the dot to calibrate"
+        instructions_surface = font.render(instructions, True, TEXT_COLOR)
+        instructions_rect = instructions_surface.get_rect(center=(screen_width // 2, 50))
+        screen.blit(instructions_surface, instructions_rect)
+
+        if cevent.point[0] != prev_x or cevent.point[1] != prev_y:
+            iterator += 1
+            prev_x = cevent.point[0]
+            prev_y = cevent.point[1]
+
+        if iterator > total_iterations:
+            calibrating = False
+
+        pygame.display.flip()
+        clock.tick(framerate)
+
+    pygame.quit()
+
+    
+    
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor("facegestures/models/shape_predictor_68_face_landmarks.dat")
     fa = service.DepthFacialLandmarks("facegestures/models/sparse_face.tflite")
@@ -308,6 +460,8 @@ def main():
     overlay.destroyed.connect(app.quit)  # Ensures the program exits when the overlay is closed
 
 
+
+
     # Function to process frames in a separate thread
     # print("entering main loop")
     while True:
@@ -318,40 +472,21 @@ def main():
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        h, w, _ = frame.shape
-
-        gevent, cevent = eye_gestures.step(
-            frame,
-            calibration=False,
-            width=w,
-            height=h,
-            context="main"
-        )
-
-        if gevent is not None:
-            gaze_point = gevent.point  # (x, y) coordinates
-
-            # Display the gaze point on the frame
-            cv2.circle(frame, (int(gaze_point[0]), int(gaze_point[1])), 10, (0, 0, 0), -1)
-            cv2.putText(frame, f"Gaze: ({int(gaze_point[0])}, {int(gaze_point[1])})",
-                        (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            # pyautogui.moveTo(int(gaze_point[0]), int(gaze_point[1]))
-
+        # h, w, _ = frame.shape
         # Create threads
         t1 = threading.Thread(target=face_and_blink_detection, args=(frame, gray, shared_state, detector, predictor, overlay))
         t2 = threading.Thread(target=pose_estimation_and_shake_nod_detection, args=(frame, shared_state, fa, overlay))
-        # t3 = threading.Thread(target = eyetracking())
-
+        t3 = threading.Thread(target=eye_tracking, args=(frame, eye_gestures, screen_width, screen_height))
 
         # Start threads
         t1.start()
         t2.start()
-        # t3.start()
+        t3.start()
 
         # Wait for threads to finish
         t1.join()
         t2.join()
-        # t3.join
+        t3.join
 
 
         # Process PyQt events
