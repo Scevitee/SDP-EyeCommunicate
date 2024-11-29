@@ -8,8 +8,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent, QPixmap, QCursor, QMouseEvent, QTransform, QPalette
 from PyQt5.QtWidgets import QGraphicsColorizeEffect
 
-from .art_program.art_canvas import ArtWidget
-from .tts.virtual_keyboard import AlphaNeumericVirtualKeyboard as VKeyboard
+from art_program.art_canvas import ArtWidget
+from tts.virtual_keyboard import AlphaNeumericVirtualKeyboard as VKeyboard
 
 class Overlay(QWidget):
     # Define signals
