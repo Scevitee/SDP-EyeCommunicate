@@ -293,6 +293,13 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
             self.move(self.x_pos, self.y_pos)
 
         self.set_source(event, source, call_back)
+
+        # Let's the user select enter to trigger tts
+        self.enter_key_filter = EnterKeyEventFilter(self, self.tts_engine)
+        if source:
+            source.installEventFilter(self.enter_key_filter)
+
+
         self.constraint = constraint
 
         for lineIndex, line in enumerate(self.key_list_by_lines_lower):
@@ -502,6 +509,20 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
         """
         self.resize(1070, 315)
         event.accept()
+
+# Used to let user click enter once they've finished their input for tts
+class EnterKeyEventFilter(QtCore.QObject):
+    def __init__(self, parent, tts_engine):
+        super().__init__(parent)
+        self.tts_engine = tts_engine
+
+    def eventFilter(self, watched, event):
+        if event.type() == QtCore.QEvent.KeyPress and event.key() == QtCore.Qt.Key_Return:
+            if isinstance(watched, (QtWidgets.QLineEdit, QtWidgets.QTextEdit)):
+                text = watched.text() if isinstance(watched, QtWidgets.QLineEdit) else watched.toPlainText()
+                self.tts_engine.speak(text)  # Read aloud the text
+            return True  # Consume the event
+        return super().eventFilter(watched, event)
 
 
 class BackSpaceSignal (QtCore.QObject):
