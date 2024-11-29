@@ -1,11 +1,11 @@
-#overlay.py
+# overlay.py
 import sys
 from PyQt5.QtCore import Qt, QPoint, QSize, QEvent, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,
     QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory, QLineEdit, QGraphicsDropShadowEffect
 )
-from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent, QPixmap, QCursor, QMouseEvent, QTransform, QPalette
+from PyQt5.QtGui import QPainter, QColor, QIcon, QPixmap, QCursor, QMouseEvent
 from PyQt5.QtWidgets import QGraphicsColorizeEffect
 
 from .art_program.art_canvas import ArtWidget
@@ -18,6 +18,7 @@ class Overlay(QWidget):
     zoom_in_signal = pyqtSignal()
     zoom_out_signal = pyqtSignal()
     toggle_pin_signal = pyqtSignal()
+    select_highlighted_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -75,7 +76,6 @@ class Overlay(QWidget):
         self.home_widget = QWidget()
         self.home_widget.setLayout(home_layout)
         
-        
         self.stacked_widget.addWidget(self.home_widget)
         
         # Add other widgets to the stacked widget
@@ -85,11 +85,10 @@ class Overlay(QWidget):
         self.keyboard_widget = KeyboardWidget(self)
         self.stacked_widget.addWidget(self.keyboard_widget)
 
-        # Add a horizontal layout for the buttons (tabs) at the bottom
+        # Create a horizontal layout for the buttons (tabs) at the bottom
         self.button_layout = QHBoxLayout()
         self.button_layout.setContentsMargins(0, 0, 0, 0)
         self.button_layout.setSpacing(10)
-        self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
 
         # Add a notification label (notification bubble)
         self.notification_label = QLabel(self)
@@ -106,11 +105,10 @@ class Overlay(QWidget):
         self.notification_label.setAlignment(Qt.AlignCenter)
         self.notification_label.setFixedWidth(200)  # Adjust as needed
 
-        # Add the notification label to the button layout
-        self.button_layout.addWidget(self.notification_label)
-
-        # Spacer between notification and buttons
-        self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
+        # **Optional:** If you want to include the notification label in the button layout,
+        # you can uncomment the following lines. Otherwise, it will remain separate.
+        # self.button_layout.addWidget(self.notification_label)
+        # self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
 
         # Add a pin button
         self.toggle_button = QPushButton(self)
@@ -135,38 +133,37 @@ class Overlay(QWidget):
         keyboard_icon = QIcon("assets/tts_icon.png")
         self.setup_button(self.keyboard_button, keyboard_icon, self.show_keyboard)
 
-        self.widget_button_mapping = {
-            self.home_widget: self.home_button,
-            self.drawing_widget: self.drawing_button,
-            self.keyboard_widget: self.keyboard_button
-        }
-        # List of widgets to cycle through
-        self.widget_list = [
-            self.home_widget,
-            self.drawing_widget,
-            self.keyboard_widget
-        ]
-        self.current_widget_index = 0  # Starting index
-
-        # Add the buttons to the layout
+        # **Add Spacers to Center the Buttons**
+        self.button_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        
+        # Add buttons to the layout
         self.button_layout.addWidget(self.toggle_button)
         self.button_layout.addWidget(self.close_button)
         self.button_layout.addWidget(self.home_button)
         self.button_layout.addWidget(self.drawing_button)
         self.button_layout.addWidget(self.keyboard_button)
+        
+        self.button_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
-        # Spacer to center the buttons
-        self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
+        # Create a container widget for the button layout
+        button_container = QWidget(self)
+        button_container_layout = QVBoxLayout(button_container)
+        button_container_layout.setContentsMargins(10, 10, 10, 10)  # Adjusted margins
+        button_container_layout.setSpacing(0)
+        button_container_layout.setAlignment(Qt.AlignCenter)
 
-        # Add the horizontal button layout to the bottom of the main layout
-        self.layout.addLayout(self.button_layout)
+        # Add the button layout to the container layout
+        button_container_layout.addLayout(self.button_layout)
+
+        # Add the container widget to the main layout
+        self.layout.addWidget(button_container)
 
         # Create the eyeball button (icon) for minimized state
         self.eyeball_button = DraggableButton(self)
         eyeball_icon = QIcon("assets/eyecomm.png")
         self.eyeball_button.setIcon(eyeball_icon)
         self.eyeball_button.setIconSize(QSize(75, 75))  # Adjust size as needed
-        self.eyeball_button.setFixedSize(85, 85)        # Adjust size as needed
+        self.eyeball_button.setFixedSize(95, 95)        # Adjust size as needed
         self.eyeball_button.clicked.connect(self.toggle_pin)
         self.eyeball_button.setStyleSheet("""
             QPushButton {
@@ -178,8 +175,9 @@ class Overlay(QWidget):
                 background-color: #596787;
             }
         """)        
+        
         self.eyeball_button.hide()  # Initially hidden
-        self.layout.addWidget(self.eyeball_button, alignment=Qt.AlignCenter)
+        # self.layout.addWidget(self.eyeball_button, alignment=Qt.AlignHCenter)
 
         self.is_open = True
         
@@ -192,6 +190,21 @@ class Overlay(QWidget):
         # Set the default widget to display
         self.stacked_widget.setCurrentWidget(self.home_widget)  # Changed from self.default_label
 
+        # Mapping widgets to their corresponding buttons for style updates
+        self.widget_button_mapping = {
+            self.home_widget: self.home_button,
+            self.drawing_widget: self.drawing_button,
+            self.keyboard_widget: self.keyboard_button
+        }
+
+        # List of widgets to cycle through
+        self.widget_list = [
+            self.home_widget,
+            self.drawing_widget,
+            self.keyboard_widget
+        ]
+        self.current_widget_index = 0  # Starting index
+
         # Apply styling
         self.apply_styles()
 
@@ -201,6 +214,8 @@ class Overlay(QWidget):
         self.zoom_in_signal.connect(self.zoom_in)
         self.zoom_out_signal.connect(self.zoom_out)
         self.toggle_pin_signal.connect(self.toggle_pin)
+        self.select_highlighted_signal.connect(self.select_highlighted_element)
+
 
         self.dragging_window = False
         self.drag_start_position_window = QPoint()
@@ -233,9 +248,6 @@ class Overlay(QWidget):
                 background-color: #4c566a;
             }
         """)
-        # Add the button to the layout (if not already added)
-        if button not in self.button_layout.children():
-            self.button_layout.addWidget(button)
 
     def display_notification(self, message):
         # Update the notification label with the message
@@ -287,7 +299,7 @@ class Overlay(QWidget):
         else:
             # Collapse the window to the size of the eyeball icon
             sz = self.eyeball_button.size()
-            self.setFixedSize(sz.width() * 1.2, sz.height() * 1.2)
+            self.setFixedSize(sz.width() * 1, sz.height() * 1)
             self.is_pinned = True
 
             # Hide main UI elements
@@ -303,7 +315,6 @@ class Overlay(QWidget):
             self.layout.setContentsMargins(0, 0, 0, 0)
         # Adjust font sizes when resizing
         self.adjust_font_sizes()
-
 
     def show_confirmation_dialog(self):
         confirmation_dialog = QMessageBox(self)
@@ -383,10 +394,7 @@ class Overlay(QWidget):
             self.apply_zoom()
 
     def update_button_styles(self):
-        # List of buttons that correspond to widgets
         buttons = [self.home_button, self.drawing_button, self.keyboard_button]
-
-        # Reset styles for all buttons
         for button in buttons:
             button.setStyleSheet("""
                 QPushButton {

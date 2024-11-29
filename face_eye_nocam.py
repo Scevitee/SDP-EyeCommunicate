@@ -4,13 +4,15 @@ import sys
 import dlib
 import numpy as np
 import imutils
+import os
 import sys
 import pygame
 import time
 import pyautogui
 import threading
 import facegestures.pose as service
-from dataclasses import dataclass
+import warnings
+from sklearn.exceptions import ConvergenceWarning
 from imutils import face_utils
 from imutils.video import VideoStream
 from PyQt5.QtWidgets import QApplication
@@ -19,6 +21,11 @@ from collections import deque
 from facegestures.gestures import *
 from eyetracking.eyegestures import EyeGestures_v2
 from ui.overlay import Overlay
+
+if not sys.warnoptions:
+    warnings.simplefilter("ignore")
+    os.environ["PYTHONWARNINGS"] = "ignore::UserWarning"
+
 
 """
     This is a copy of our main.py file from presentation 2, but without the webcam display.
@@ -92,6 +99,10 @@ class SharedState:
         self.UNIVERSAL_BUFFER_DURATION = 50
         self.universal_buffer_frames = 0
         
+        self.is_eyetracking = True
+        self.blink_timestamps = deque()
+        self.TRIPLE_BLINK_TIME_WINDOW = 2.0  # seconds
+        
         
     # Choose from some default sensitivity levels
     def setSensitivity(self, sensitivity):
@@ -145,7 +156,6 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor, ove
     for face in shared_state.dlib_faces:
         # Get facial landmarks
         landmarks = predictor(gray, face)
-        # landmarks = predictor(frame, face)
         landmarks = face_utils.shape_to_np(landmarks)
         (x, y, w, h) = face_utils.rect_to_bb(face)
 
@@ -203,6 +213,7 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor, ove
                     print("Eyebrow raised!")
                     shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
                     overlay.notification_signal.emit("Eyebrow raised")
+                    overlay.select_highlighted_signal.emit()  # Emit the signal to select the highlighted element
 
     # Decrease the blink display frame counter
     if shared_state.blink_display_frames > 0:
@@ -282,9 +293,13 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
     if shared_state.universal_buffer_frames > 0:
         shared_state.universal_buffer_frames -= 1
 
-def eye_tracking(frame, eye_gestures, screen_width, screen_height):
-    
-    
+
+
+# once calibrated, the eye_gestures object will take utilize the current frame to deduce where the eyes are looking
+# This will run in parallel with the gesture detections
+def eye_tracking(frame, eye_gestures, screen_width, screen_height, is_eyetracking):    
+    if not is_eyetracking:
+        return
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     gevent, _ = eye_gestures.step(
         frame,
@@ -311,7 +326,7 @@ def main():
     cap = cv2.VideoCapture(0)
 
     framerate = 60
-    radius = 500
+    radius = 400
     total_iterations = 25  # Total number of calibration points
 
 
@@ -359,7 +374,7 @@ def main():
     # Pre-calibration message
     pre_calibration_message_line1 = "Hello! Your eye-tracking calibration is about to begin."
     pre_calibration_message_line2 = "Please try to keep your head as still as possible and focus on the number in the centers of the dots."
-    countdown = 6
+    countdown = 10
 
     # Display pre-calibration message with countdown
     for i in range(countdown, -1, -1):
@@ -387,6 +402,7 @@ def main():
 
     # Calibration Loop
     while calibrating:
+        
         ret, frame = cap.read()
         if not ret:
             print("Failed to grab frame")
@@ -424,12 +440,6 @@ def main():
         text_rect = text_surface.get_rect(center=cevent.point)
         screen.blit(text_surface, text_rect)
 
-        # Display instructions at the top
-        instructions = "Focus on the dot to calibrate"
-        instructions_surface = font.render(instructions, True, TEXT_COLOR)
-        instructions_rect = instructions_surface.get_rect(center=(screen_width // 2, 50))
-        screen.blit(instructions_surface, instructions_rect)
-
         if cevent.point[0] != prev_x or cevent.point[1] != prev_y:
             iterator += 1
             prev_x = cevent.point[0]
@@ -439,7 +449,7 @@ def main():
             calibrating = False
 
         pygame.display.flip()
-        clock.tick(framerate)
+        clock.tick(30)  # Reduce framerate to 30 FPS
 
     pygame.quit()
 
@@ -476,7 +486,7 @@ def main():
         # Create threads
         t1 = threading.Thread(target=face_and_blink_detection, args=(frame, gray, shared_state, detector, predictor, overlay))
         t2 = threading.Thread(target=pose_estimation_and_shake_nod_detection, args=(frame, shared_state, fa, overlay))
-        t3 = threading.Thread(target=eye_tracking, args=(frame, eye_gestures, screen_width, screen_height))
+        t3 = threading.Thread(target=eye_tracking, args=(frame, eye_gestures, screen_width, screen_height, shared_state.is_eyetracking))
 
         # Start threads
         t1.start()
@@ -486,7 +496,7 @@ def main():
         # Wait for threads to finish
         t1.join()
         t2.join()
-        t3.join
+        t3.join()
 
 
         # Process PyQt events
