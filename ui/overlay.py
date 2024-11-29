@@ -1,14 +1,26 @@
-# enhanced_ui.py
+# overlay.py
 import sys
-from PyQt5.QtCore import Qt, QPoint, QSize, QEvent, QTimer
+from PyQt5.QtCore import Qt, QPoint, QSize, QEvent, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,
-    QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory
+    QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory, QLineEdit, QGraphicsDropShadowEffect
 )
-from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent, QPixmap
+from PyQt5.QtGui import QPainter, QColor, QIcon, QKeyEvent, QPixmap, QCursor, QMouseEvent, QTransform, QPalette
+from PyQt5.QtWidgets import QGraphicsColorizeEffect
+
+#from .art_program.art_canvas import ArtWidget
+
+from ui.tts.virtual_keyboard import AlphaNeumericVirtualKeyboard as VKeyboard
 
 
 class Overlay(QWidget):
+    # Define signals
+    notification_signal = pyqtSignal(str)
+    change_page_signal = pyqtSignal(str)
+    zoom_in_signal = pyqtSignal()
+    zoom_out_signal = pyqtSignal()
+    toggle_pin_signal = pyqtSignal()
+
     def __init__(self):
         super().__init__()
 
@@ -31,8 +43,7 @@ class Overlay(QWidget):
         self.stacked_widget = QStackedWidget(self)
         self.layout.addWidget(self.stacked_widget)
 
-        # Create a vertical layout to stack labels vertically
-        welcome_layout = QVBoxLayout()
+        home_layout = QVBoxLayout()
 
         # Create instances of the different UI elements
         self.default_label = QLabel('Welcome to EyeCommunicate', self)
@@ -47,31 +58,31 @@ class Overlay(QWidget):
 
         # Create subtitle labels
         self.instructions_label = QLabel('<b>Look Up</b> to Zoom Out<br><br>'
-                                      '<b>Look Down</b> to Zoom In<br><br>'
-                                      '<b>Nod Head</b> to <b>Collapse</b> or <b>Expand</b> the UI<br><br>'
-                                      '<b>Shake Head</b> (left, right) to Adjust Sensitivity<br><br>'
-                                      '<b>Look Left</b> to Change Page in the <b>Left</b> direction<br><br>'
-                                      '<b>Look Right</b> to Change Page in the <b>Right</b> direction<br><br>'
-                                      '<b>Raise Eyebrow</b> to Press Enter<br><br><br>')
+                                         '<b>Look Down</b> to Zoom In<br><br>'
+                                         '<b>Nod Head</b> to <b>Collapse</b> or <b>Expand</b> the UI<br><br>'
+                                         '<b>Shake Head</b> (left, right) to Adjust Sensitivity<br><br>'
+                                         '<b>Look Left</b> to Change Page in the <b>Left</b> direction<br><br>'
+                                         '<b>Look Right</b> to Change Page in the <b>Right</b> direction<br><br>'
+                                         '<b>Raise Eyebrow</b> to Press Enter<br><br><br>')
         self.instructions_label.setStyleSheet("color: rgba(255, 255, 255, 200); font-size: 14px;")
         self.instructions_label.setTextFormat(Qt.RichText)
         self.instructions_label.setAlignment(Qt.AlignCenter)
 
         # Add all labels to the layout
-        welcome_layout.addWidget(self.default_label)
-        welcome_layout.addWidget(self.photo)
-        welcome_layout.addWidget(self.instructions_label)
+        home_layout.addWidget(self.default_label)
+        home_layout.addWidget(self.photo)
+        home_layout.addWidget(self.instructions_label)
 
         # Create a widget to hold the layout
-        self.welcome_widget = QWidget()
-        self.welcome_widget.setLayout(welcome_layout)
+        self.home_widget = QWidget()
+        self.home_widget.setLayout(home_layout)
 
-        self.stacked_widget.addWidget(self.welcome_widget)
+        self.stacked_widget.addWidget(self.home_widget)
 
-        self.settings_widget = SettingsWidget(self)
-        self.stacked_widget.addWidget(self.settings_widget)
+        # Add other widgets to the stacked widget
+        self.drawing_widget = QWidget()
+        self.drawing_widget.setLayout(home_layout)
 
-        self.drawing_widget = SettingsWidget()
         self.stacked_widget.addWidget(self.drawing_widget)
 
         self.keyboard_widget = KeyboardWidget(self)
@@ -81,8 +92,27 @@ class Overlay(QWidget):
         self.button_layout = QHBoxLayout()
         self.button_layout.setContentsMargins(0, 0, 0, 0)
         self.button_layout.setSpacing(10)
+        self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
 
-        # Spacer to center the buttons
+        # Add a notification label (notification bubble)
+        self.notification_label = QLabel(self)
+        self.notification_label.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                color: red;
+                font-size: 16px;
+                padding: 4px;
+                border-radius: 5px;
+            }
+        """)
+        self.notification_label.setFixedHeight(50)
+        self.notification_label.setAlignment(Qt.AlignCenter)
+        self.notification_label.setFixedWidth(200)  # Adjust as needed
+
+        # Add the notification label to the button layout
+        self.button_layout.addWidget(self.notification_label)
+
+        # Spacer between notification and buttons
         self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
 
         # Add a pin button
@@ -95,35 +125,38 @@ class Overlay(QWidget):
         power_icon = QIcon("assets/power_button.png")
         self.setup_button(self.close_button, power_icon, self.show_confirmation_dialog)
 
-        # Add a settings button
-        self.settings_button = QPushButton(self)
-        settings_icon = QIcon("assets/settings_icon.png")
-        self.setup_button(self.settings_button, settings_icon, self.show_settings)
+        # Add navigation buttons
+        self.home_button = QPushButton(self)
+        home_icon = QIcon("assets/home_icon.png")
+        self.setup_button(self.home_button, home_icon, self.show_homepage)
 
-        # Add a drawing button
         self.drawing_button = QPushButton(self)
         draw_icon = QIcon("assets/draw_icon.png")
         self.setup_button(self.drawing_button, draw_icon, self.show_drawing_canvas)
 
-        # Add a keyboard button
         self.keyboard_button = QPushButton(self)
         keyboard_icon = QIcon("assets/tts_icon.png")
         self.setup_button(self.keyboard_button, keyboard_icon, self.show_keyboard)
 
         self.widget_button_mapping = {
-            self.welcome_widget: None,  # No button corresponds to the default label
-            self.settings_widget: self.settings_button,
+            self.home_widget: self.home_button,
             self.drawing_widget: self.drawing_button,
             self.keyboard_widget: self.keyboard_button
         }
         # List of widgets to cycle through
         self.widget_list = [
-            self.welcome_widget,
-            self.settings_widget,
+            self.home_widget,
             self.drawing_widget,
             self.keyboard_widget
         ]
         self.current_widget_index = 0  # Starting index
+
+        # Add the buttons to the layout
+        self.button_layout.addWidget(self.toggle_button)
+        self.button_layout.addWidget(self.close_button)
+        self.button_layout.addWidget(self.home_button)
+        self.button_layout.addWidget(self.drawing_button)
+        self.button_layout.addWidget(self.keyboard_button)
 
         # Spacer to center the buttons
         self.button_layout.addSpacerItem(QSpacerItem(10, 0, QSizePolicy.Expanding))
@@ -132,7 +165,7 @@ class Overlay(QWidget):
         self.layout.addLayout(self.button_layout)
 
         # Create the eyeball button (icon) for minimized state
-        self.eyeball_button = QPushButton(self)
+        self.eyeball_button = DraggableButton(self)
         eyeball_icon = QIcon("assets/eyecomm.png")
         self.eyeball_button.setIcon(eyeball_icon)
         self.eyeball_button.setIconSize(QSize(75, 75))  # Adjust size as needed
@@ -151,10 +184,6 @@ class Overlay(QWidget):
         self.eyeball_button.hide()  # Initially hidden
         self.layout.addWidget(self.eyeball_button, alignment=Qt.AlignCenter)
 
-        # Variables for dragging
-        self.is_dragging = False
-        self.drag_start_position = QPoint(0, 0)
-
         self.is_open = True
 
         # Initialize zoom variables
@@ -164,10 +193,33 @@ class Overlay(QWidget):
         self.min_zoom = 0.2
 
         # Set the default widget to display
-        self.stacked_widget.setCurrentWidget(self.welcome_widget)
+        self.stacked_widget.setCurrentWidget(self.home_widget)  # Changed from self.default_label
 
         # Apply styling
         self.apply_styles()
+
+        # Connect signals to methods
+        self.notification_signal.connect(self.display_notification)
+        self.change_page_signal.connect(self.change_page_directional)
+        self.zoom_in_signal.connect(self.zoom_in)
+        self.zoom_out_signal.connect(self.zoom_out)
+        self.toggle_pin_signal.connect(self.toggle_pin)
+
+        self.dragging_window = False
+        self.drag_start_position_window = QPoint()
+
+        # Initialize interactable widgets list and highlighted widget
+        self.interactable_widgets = []
+        self.highlighted_widget = None
+
+        # Set up timer to update highlighted element
+        self.highlight_timer = QTimer(self)
+        self.highlight_timer.timeout.connect(self.update_highlighted_element)
+        self.highlight_timer.start(100)  # Update every 100 milliseconds
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.update_interactable_widgets()
 
     def setup_button(self, button, icon, callback):
         button.setIcon(icon)
@@ -184,7 +236,19 @@ class Overlay(QWidget):
                 background-color: #4c566a;
             }
         """)
-        self.button_layout.addWidget(button)
+        # Add the button to the layout (if not already added)
+        if button not in self.button_layout.children():
+            self.button_layout.addWidget(button)
+
+    def display_notification(self, message):
+        # Update the notification label with the message
+        self.notification_label.setText(message)
+
+        # Optionally, set a timer to clear the message after some time
+        QTimer.singleShot(3000, self.clear_notification)
+
+    def clear_notification(self):
+        self.notification_label.setText('')
 
     def toggleMinimize(self):
         if self.is_open:
@@ -252,55 +316,20 @@ class Overlay(QWidget):
         if result == QMessageBox.Yes:
             sys.exit(0)
 
-    def show_sensitivity_change_message(self, level):
-        # Create the message box
-        message = ""
-
-        if level == 0:
-            message = "Sensitivity changed to low"
-        elif level == 1:
-            message = "Sensitivity changed to medium"
-        elif level == 2:
-            message = "Sensitivity changed to high"
-
-        message_box = QMessageBox(self)
-        message_box.setIcon(QMessageBox.Information)
-        message_box.setWindowTitle("Setting Change")
-        message_box.setText(message)
-        # message_box.setStandardButtons(QMessageBox.Close)  # No buttons for auto-close
-
-        QTimer.singleShot(3000, message_box.close)  # 3000 ms = 3 seconds
-
-        # Show the message box
-        message_box.exec_()
-
-    def show_settings(self):
-        self.stacked_widget.setCurrentWidget(self.settings_widget)
+    def show_homepage(self):
+        self.stacked_widget.setCurrentWidget(self.home_widget)
         self.update_button_styles()
+        self.update_interactable_widgets()
 
     def show_drawing_canvas(self):
         self.stacked_widget.setCurrentWidget(self.drawing_widget)
         self.update_button_styles()
+        self.update_interactable_widgets()
 
     def show_keyboard(self):
         self.stacked_widget.setCurrentWidget(self.keyboard_widget)
         self.update_button_styles()
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.is_dragging = True
-            self.drag_start_position = event.globalPos() - self.frameGeometry().topLeft()
-            event.accept()
-
-    def mouseMoveEvent(self, event):
-        if self.is_dragging:
-            self.move(event.globalPos() - self.drag_start_position)
-            event.accept()
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.is_dragging = False
-            event.accept()
+        self.update_interactable_widgets()
 
     def adjust_font_sizes(self):
         if not self.is_pinned:
@@ -334,6 +363,7 @@ class Overlay(QWidget):
         # Set the current widget based on the updated index
         self.stacked_widget.setCurrentWidget(self.widget_list[self.current_widget_index])
         self.update_button_styles()
+        self.update_interactable_widgets()
 
     def apply_zoom(self):
         self.setFixedSize(
@@ -345,6 +375,7 @@ class Overlay(QWidget):
     def zoom_in(self):
         if self.zoom_scale < self.max_zoom:
             self.zoom_scale += self.zoom_step
+            self.update()
             self.apply_zoom()
 
     def zoom_out(self):
@@ -355,7 +386,7 @@ class Overlay(QWidget):
 
     def update_button_styles(self):
         # List of buttons that correspond to widgets
-        buttons = [self.settings_button, self.drawing_button, self.keyboard_button]
+        buttons = [self.home_button, self.drawing_button, self.keyboard_button]
 
         # Reset styles for all buttons
         for button in buttons:
@@ -399,62 +430,190 @@ class Overlay(QWidget):
             self.zoom_out()
             print("Zoom out")
             print(self.zoom_scale)
-
+        elif event.key() == Qt.Key_L:
+            self.select_highlighted_element()
         else:
             super().keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.dragging_window = True
+            self.drag_start_position_window = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.dragging_window and event.buttons() & Qt.LeftButton:
+            self.move(event.globalPos() - self.drag_start_position_window)
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.dragging_window:
+            self.dragging_window = False
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
+
+    def update_interactable_widgets(self):
+        """Updates the list of interactable widgets based on the current state."""
+        self.interactable_widgets = []
+
+        # Add main buttons if they are visible
+        for button in [self.toggle_button, self.close_button, self.home_button, self.drawing_button,
+                       self.keyboard_button]:
+            if button.isVisible():
+                self.interactable_widgets.append(button)
+
+        # Add widgets from current page
+        current_widget = self.stacked_widget.currentWidget()
+
+        if current_widget == self.keyboard_widget:
+            # Add text_entry
+            self.interactable_widgets.append(self.keyboard_widget.text_entry)
+            # Optionally add virtual keyboard buttons
+            # for vk_button in self.keyboard_widget.virtual_keyboard.buttons:
+            #     self.interactable_widgets.append(vk_button)
+
+        elif current_widget == self.drawing_widget:
+            # If there are interactable widgets in drawing_widget, add them.
+            pass
+        elif current_widget == self.home_widget:
+            # If there are interactable widgets in home_widget, add them.
+            pass
+
+    def update_highlighted_element(self):
+        """Finds the nearest interactable element to the mouse position and highlights it."""
+        # Get mouse position in Overlay coordinates
+        mouse_pos_global = QCursor.pos()
+        mouse_pos = self.mapFromGlobal(mouse_pos_global)
+
+        min_distance = float('inf')
+        closest_widget = None
+
+        for widget in self.interactable_widgets:
+            if not widget.isVisible():
+                continue
+
+            # Get widget's position and size
+            widget_pos = widget.mapTo(self, QPoint(0, 0))
+            widget_size = widget.size()
+
+            # Get widget center
+            widget_center = widget_pos + QPoint(widget_size.width() // 2, widget_size.height() // 2)
+
+            # Compute distance
+            distance = (mouse_pos - widget_center).manhattanLength()
+
+            if distance < min_distance:
+                min_distance = distance
+                closest_widget = widget
+
+        # Update highlighted widget
+        if closest_widget != self.highlighted_widget:
+            if self.highlighted_widget:
+                self.unhighlight_widget(self.highlighted_widget)
+            if closest_widget:
+                self.highlight_widget(closest_widget)
+            self.highlighted_widget = closest_widget
+
+    def highlight_widget(self, widget):
+        """Applies a highlight to the widget."""
+        # Apply a glow effect
+        glow_effect = QGraphicsDropShadowEffect()
+        glow_effect.setBlurRadius(20)
+        glow_effect.setColor(QColor(38, 255, 99))
+        glow_effect.setOffset(0)
+        widget.setGraphicsEffect(glow_effect)
+
+    def unhighlight_widget(self, widget):
+        """Removes the highlight from the widget."""
+        # Remove the graphics effect
+        widget.setGraphicsEffect(None)
+
+    def select_highlighted_element(self):
+        """Simulates a click on the highlighted widget."""
+        if self.highlighted_widget:
+            # Simulate a click on the highlighted widget
+            if isinstance(self.highlighted_widget, QPushButton):
+                self.highlighted_widget.click()
+            elif isinstance(self.highlighted_widget, QLineEdit):
+                # Set focus to the line edit
+                self.highlighted_widget.setFocus()
+                # Simulate mouse press event to show virtual keyboard
+                event = QMouseEvent(QEvent.MouseButtonPress, QPoint(0, 0), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+                self.highlighted_widget.mousePressEvent(event)
+        else:
+            print('No highlighted widget to select.')
 
 
 class KeyboardWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Main layout for the keyboard
+        # Main layout for the keyboard widget
         layout = QVBoxLayout(self)
         layout.setSpacing(5)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        key_rows = [
-            ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-            ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-            ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'Space']
-        ]
+        # Create a QLineEdit for text input
+        self.text_entry = QLineEdit(self)
+        self.text_entry.setPlaceholderText("Click to type...")
+        self.text_entry.setStyleSheet("""
+            QLineEdit {
+                font-size: 18px;
+                padding: 5px;
+                border: 1px solid #4c566a;
+                border-radius: 5px;
+                color: #ECEFF4;
+            }
+        """)
+        self.text_entry.setFixedHeight(40)
+        layout.addWidget(self.text_entry)
 
-        for row in key_rows:
-            row_layout = QHBoxLayout()
-            row_layout.setSpacing(5)
-            for key in row:
-                button = QPushButton(key)
-                button.setFixedSize(60, 60)
-                button.clicked.connect(lambda _, k=key: self.key_pressed(k))
-                button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #3b4252;
-                        color: #ECEFF4;
-                        border: none;
-                        border-radius: 5px;
-                        font-size: 18px;
-                    }
-                    QPushButton:hover {
-                        background-color: #4c566a;
-                    }
-                """)
-                row_layout.addWidget(button)
-            layout.addLayout(row_layout)
+        # Add the virtual keyboard in a horizontally centered container
+        keyboard_container = QWidget(self)
+        keyboard_layout = QHBoxLayout(keyboard_container)
+        keyboard_layout.setContentsMargins(0, 0, 0, 0)
+        keyboard_layout.setAlignment(Qt.AlignHCenter)
 
+        # Embed the virtual keyboard
+        self.virtual_keyboard = VKeyboard(self.text_entry)
+        self.virtual_keyboard.setParent(keyboard_container)
+        self.virtual_keyboard.setFixedSize(600, 315)  # Adjust to ensure it fits correctly
+        self.virtual_keyboard.hide()
+        keyboard_layout.addWidget(self.virtual_keyboard)
+
+        layout.addWidget(keyboard_container)
         self.setLayout(layout)
 
-    def key_pressed(self, key):
-        if key == 'Space':
-            key = ' '
+        # Connect the QLineEdit mouse press event to show the keyboard
+        self.text_entry.mousePressEvent = self.show_virtual_keyboard
 
-        focused_widget = QApplication.focusWidget()
-        if focused_widget:
-            key_event = QKeyEvent(QEvent.KeyPress, 0, Qt.NoModifier, key)
-            QApplication.postEvent(focused_widget, key_event)
-            release_event = QKeyEvent(QEvent.KeyRelease, 0, Qt.NoModifier, key)
-            QApplication.postEvent(focused_widget, release_event)
+        # check to see if keyboard is open on keyboard window
+        self.is_keyboard_open = False
 
-        print(f"Simulated key press: {key}")
+    def show_virtual_keyboard(self, event):
+        """Show the virtual keyboard directly below the text entry box."""
+        if not self.virtual_keyboard.isVisible():
+            # Get the text entry box's position relative to the parent
+            text_entry_pos = self.text_entry.mapToParent(QPoint(0, 0))
+
+            # Calculate the position for the keyboard relative to the container
+            keyboard_x = max(0, text_entry_pos.x() + self.text_entry.width() // 2 - self.virtual_keyboard.width() // 2)
+            keyboard_y = text_entry_pos.y() + self.text_entry.height() + 10
+
+            # Display the keyboard at the calculated position
+            self.virtual_keyboard.display(source=self.text_entry, x_pos=keyboard_x, y_pos=keyboard_y)
+
+            # Show the keyboard
+            self.virtual_keyboard.show()
+            self.is_keyboard_open = True
+            self.virtual_keyboard.set_button_hover('q')
+        else:
+            self.virtual_keyboard.hide()
 
 
 class SettingsWidget(QWidget):
@@ -476,6 +635,38 @@ class SettingsWidget(QWidget):
 
         layout.addStretch()
         self.setLayout(layout)
+
+
+class DraggableButton(QPushButton):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.dragging = False
+        self.drag_start_position = QPoint()
+        self.parent_widget = parent
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.dragging = False
+            self.drag_start_position = event.globalPos()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() & Qt.LeftButton:
+            distance = (event.globalPos() - self.drag_start_position).manhattanLength()
+            if distance > QApplication.startDragDistance():
+                self.dragging = True
+            if self.dragging:
+                delta = event.globalPos() - self.drag_start_position
+                self.parent_widget.move(self.parent_widget.pos() + delta)
+                self.drag_start_position = event.globalPos()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self.dragging:
+            self.dragging = False
+        else:
+            super().mouseReleaseEvent(event)
 
 
 if __name__ == '__main__':

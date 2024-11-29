@@ -199,6 +199,10 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor, ove
                 eyebrow_raised = detect_eyebrow_raise(landmarks, shared_state)
                 if eyebrow_raised and shared_state.universal_buffer_frames == 0:
                     print("Eyebrow raised!")
+                    if overlay.keyboard_widget.is_keyboard_open:
+                        if overlay.keyboard_widget.virtual_keyboard.hovered_key == 'Close':
+                            overlay.keyboard_widget.is_keyboard_open = False
+                        overlay.keyboard_widget.virtual_keyboard.simulate_key_press(overlay.keyboard_widget.virtual_keyboard.hovered_key)
                     shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
     # Decrease the blink display frame counter
@@ -239,26 +243,43 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
         if shared_state.universal_buffer_frames == 0:
             if look_left_detected:
                 print("LOOKING LEFT")
-                overlay.change_page_directional('left')
+                if overlay.keyboard_widget.is_keyboard_open:
+                    overlay.keyboard_widget.virtual_keyboard.move_hover_left()
+                else:
+                    overlay.change_page_directional('left')
+
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif look_right_detected:
                 print("LOOKING RIGHT")
-                overlay.change_page_directional('right')
+                if overlay.keyboard_widget.is_keyboard_open:
+                    overlay.keyboard_widget.virtual_keyboard.move_hover_right()
+                else:
+                    overlay.change_page_directional('right')
+
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif look_up_detected:
                 print("LOOKING UP")
-                overlay.zoom_in()
+                if overlay.keyboard_widget.is_keyboard_open:
+                    overlay.keyboard_widget.virtual_keyboard.move_hover_up()
+                else:
+                    overlay.zoom_in()
+
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif look_down_detected:
                 print("LOOKING DOWN")
-                overlay.zoom_out()
+                if overlay.keyboard_widget.is_keyboard_open:
+                    overlay.keyboard_widget.virtual_keyboard.move_hover_down()
+                else:
+                    overlay.zoom_out()
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif shake_detected:
                 print("SHAKE DETECTED")
+                if overlay.keyboard_widget.is_keyboard_open:
+                    continue
                 shared_state.current_sensitivity = (shared_state.current_sensitivity + 1) % 3
                 overlay.show_sensitivity_change_message(shared_state.current_sensitivity)
                 shared_state.setSensitivity(shared_state.current_sensitivity)
@@ -266,8 +287,11 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
 
             elif nod_detected:
                 print("NOD DETECTED")
+                if overlay.keyboard_widget.is_keyboard_open:
+                    continue
                 overlay.toggle_pin()
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+
 
     # Decrease the universal buffer frames
     if shared_state.universal_buffer_frames > 0:
