@@ -223,6 +223,10 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
     # Convert dlib faces to the format required by the pose estimation model
     # print("MADE IT TO POSE")
     dense_faces = dlib_to_dense(shared_state.dlib_faces)
+
+    if overlay.keyboard_widget.virtual_keyboard.isHidden:
+        overlay.keyboard_widget.is_keyboard_open = False
+
     for results in fa.get_landmarks(frame, dense_faces):
         # Get gaze directions
         gaze_horiz, gaze_vert = service.get_gaze_direction(frame, results)
