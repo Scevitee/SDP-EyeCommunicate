@@ -1,4 +1,4 @@
-""" 
+"""
 virtual keyboard from https://github.com/sanjivktr/PyQt5-Virtual-Keyboard/tree/master
 """
 
@@ -26,12 +26,26 @@ class KeyButton(QtWidgets.QPushButton):
                 border-radius: 5px;
                 min-width: 60px;
                 min-height: 40px;
+                transition: background-color 0.3s; /* Smooth transition */
+            }
+            QPushButton:hover {
+                background-color: #cce7ff; /* Light blue for hover highlight */
             }
             QPushButton:pressed {
                 background-color: #1d96ff; /* Add visible pressed state */
             }
         """)
+        self.original_stylesheet = self.styleSheet()
         self.setFocusPolicy(QtCore.Qt.NoFocus)
+
+    def set_hover_state(self, hover=True):
+        """Manually set the hover state of the button"""
+        self._is_hovered = hover
+        if hover:
+            self.setStyleSheet(self.styleSheet() + "\nQPushButton { background-color: #cce7ff; }")
+        else:
+            # Reset to original style
+            self.setStyleSheet(self.original_stylesheet)
 
     def set_key(self, key):
         """ KeyButton class method to set the key and text of button
@@ -104,6 +118,7 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
         self.isBackKeyPressed = False
         self.threadPool = QtCore.QThreadPool()
         self.keyPressHandler = None
+        self.hovered_key = 'q'
         self.backSpaceSignal = BackSpaceSignal()
         self.animationSignal = signalAnimation()
         self.animationSignalForClose = signalAnimation()
@@ -446,6 +461,94 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
     #     self.animationSignalForClose.signal.connect(self.closeAnimate)
     #     animate = AnimationThread(self.animationSignalForClose.signal, self)
     #     animate.start()
+
+    def set_button_hover(self, key, hover=True):
+        """Set hover state for a specific key"""
+        for line in self.array_buttons:
+            for button in line:
+                if button and button.text() == key:
+                    button.set_hover_state(hover)
+                    self.hovered_key = key
+                    return
+
+    def simulate_key_press(self, key):
+        """Simulate pressing a key by finding and triggering its button"""
+        if key == 'Backspace':
+            self.backspace()
+            return
+
+        for lineIndex, line in enumerate(self.array_buttons):
+            for keyIndex, button in enumerate(line):
+                if button and button.text() == key:
+                    # Set hover state
+                    # button.set_hover_state(True)
+                    # Trigger the key's signal
+                    button.key_button_clicked_signal.emit(key)
+
+                    return True
+        return False
+
+    def move_hover_left(self):
+        """Move hover state to the button to the left of current hovered button"""
+        for lineIndex, line in enumerate(self.array_buttons):
+            for keyIndex, button in enumerate(line):
+                # Check if this button is currently hovered
+                if button and button.text() == self.hovered_key:  # Adjust property check as needed
+                    # Ensure we're not at the leftmost column
+                    if keyIndex > 0:
+                        # Remove hover from current button
+                        self.set_button_hover(button.text(), False)
+                        # Set hover on button to the left
+                        left_button = self.array_buttons[lineIndex][keyIndex - 1]
+                        if left_button:
+                            self.set_button_hover(left_button.text(), True)
+                        return True
+        return False
+
+    def move_hover_right(self):
+        for lineIndex, line in enumerate(self.array_buttons):
+            for keyIndex, button in enumerate(line):
+                if button and button.text() == self.hovered_key:
+                    # Ensure we're not at the rightmost column
+                    if keyIndex < len(line) - 1:
+                        self.set_button_hover(button.text(), False)
+                        right_button = self.array_buttons[lineIndex][keyIndex + 1]
+                        if right_button:
+                            self.set_button_hover(right_button.text(), True)
+                            self.hovered_key = right_button.text()
+                        return True
+        return False
+
+    def move_hover_up(self):
+        for lineIndex, line in enumerate(self.array_buttons):
+            for keyIndex, button in enumerate(line):
+                if button and button.text() == self.hovered_key:
+                    # Ensure we're not in the top row
+                    if lineIndex > 0:
+                        self.set_button_hover(button.text(), False)
+                        # Try to find button in same column of row above
+                        up_button = self.array_buttons[lineIndex - 1][keyIndex]
+                        if up_button:
+                            self.set_button_hover(up_button.text(), True)
+                        return True
+        return False
+
+    def move_hover_down(self):
+        for lineIndex, line in enumerate(self.array_buttons):
+            for keyIndex, button in enumerate(line):
+                if button and button.text() == self.hovered_key:
+                    # Ensure we're not in the bottom row
+                    if lineIndex < len(self.array_buttons) - 1:
+                        self.set_button_hover(button.text(), False)
+                        # Try to find button in same column of row below
+                        if (lineIndex == len(self.array_buttons) - 2) and (keyIndex > 3):
+                            down_button = self.array_buttons[lineIndex + 1][2]
+                        else:
+                            down_button = self.array_buttons[lineIndex + 1][keyIndex]
+                        if down_button:
+                            self.set_button_hover(down_button.text(), True)
+                        return True
+        return False
 
     def close_handler(self):
         self.hide()

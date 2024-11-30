@@ -97,11 +97,12 @@ class SharedState:
         
         # Universal buffer duration and counter
         self.UNIVERSAL_BUFFER_DURATION = 50
+        self.KEYBOARD_BUFFER_DURATION = 15
         self.universal_buffer_frames = 0
         
-        self.is_eyetracking = True
-        self.blink_timestamps = deque()
-        self.TRIPLE_BLINK_TIME_WINDOW = 2.0  # seconds
+        # self.is_eyetracking = True
+        # self.blink_timestamps = deque()
+        # self.TRIPLE_BLINK_TIME_WINDOW = 2.0  # seconds
         
         
     # Choose from some default sensitivity levels
@@ -211,9 +212,15 @@ def face_and_blink_detection(frame, gray, shared_state, detector, predictor, ove
                 eyebrow_raised = detect_eyebrow_raise(landmarks, shared_state)
                 if eyebrow_raised and shared_state.universal_buffer_frames == 0:
                     print("Eyebrow raised!")
-                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
                     overlay.notification_signal.emit("Eyebrow raised")
-                    overlay.select_highlighted_signal.emit()  # Emit the signal to select the highlighted element
+                    if overlay.keyboard_widget.is_keyboard_open:
+                        if overlay.keyboard_widget.virtual_keyboard.hovered_key =='Close':
+                            overlay.keyboard_widget.is_keyboard_open = False
+                        overlay.keyboard_widget.virtual_keyboard.simulate_key_press(overlay.keyboard_widget.virtual_keyboard.hovered_key)
+                        shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
+                    else:
+                        overlay.select_highlighted_signal.emit()  # Emit the signal to select the highlighted element
+                        shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
     # Decrease the blink display frame counter
     if shared_state.blink_display_frames > 0:
@@ -250,33 +257,58 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
         look_down_detected = service.detect_look_up_down(shared_state.up_down_history, 'down')
         
         # Only act if universal buffer is zero
+        # .change_page_signal.emit('left')
+        # .change_page_signal.emit('right')
+        # .zoom_in_signal.emit()
+        # .zoom_out_signal.emit()
+        
+        
         if shared_state.universal_buffer_frames == 0:
             if look_left_detected:
                 print("LOOKING LEFT")
-                overlay.change_page_signal.emit('left')
-                overlay.notification_signal.emit("Page change left")
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
-                
+                if overlay.keyboard_widget.is_keyboard_open:
+                    overlay.keyboard_widget.virtual_keyboard.move_hover_left()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
+                else:
+                    overlay.change_page_signal.emit('left')
+                    overlay.notification_signal.emit("Change page left")
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+
             elif look_right_detected:
                 print("LOOKING RIGHT")
-                overlay.change_page_signal.emit('right')
-                overlay.notification_signal.emit("Page change right")
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                if overlay.keyboard_widget.is_keyboard_open:
+                    overlay.keyboard_widget.virtual_keyboard.move_hover_right()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
+                else:
+                    overlay.change_page_signal.emit('right')
+                    overlay.notification_signal.emit("Change page right")
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
             elif look_up_detected:
                 print("LOOKING UP")
-                overlay.zoom_in_signal.emit()
-                overlay.notification_signal.emit("Zoom in")
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
-                
+                if overlay.keyboard_widget.is_keyboard_open:
+                    overlay.keyboard_widget.virtual_keyboard.move_hover_up()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
+                else:
+                    overlay.zoom_in_signal.emit()
+                    overlay.notification_signal.emit("Zoom in")
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+
             elif look_down_detected:
                 print("LOOKING DOWN")
-                overlay.zoom_out_signal.emit()
-                overlay.notification_signal.emit("Zoom out")
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                overlay.notification_signal.emit("Looking down")
+                if overlay.keyboard_widget.is_keyboard_open:
+                    overlay.keyboard_widget.virtual_keyboard.move_hover_down()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
+                else:
+                    overlay.zoom_out_signal.emit()
+                    overlay.notification_signal.emit("Zoom out")
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
             
             elif shake_detected:
-                print("SHAKE DETECTED")    
+                print("SHAKE DETECTED")   
+                if overlay.keyboard_widget.is_keyboard_open:
+                    continue 
                 shared_state.current_sensitivity = (shared_state.current_sensitivity + 1) % 3
                 shared_state.setSensitivity(shared_state.current_sensitivity)
                 message = f"Sensitivity: {['Low', 'Medium', 'High'][shared_state.current_sensitivity]}"
@@ -285,6 +317,8 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
             
             elif nod_detected:
                 print("NOD DETECTED")
+                if overlay.keyboard_widget.is_keyboard_open:
+                    continue
                 overlay.toggle_pin_signal.emit()
                 overlay.notification_signal.emit("Toggled pin")
                 shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
@@ -326,7 +360,7 @@ def main():
     cap = cv2.VideoCapture(0)
 
     framerate = 60
-    radius = 400
+    radius = 45000
     total_iterations = 25  # Total number of calibration points
 
 
@@ -374,7 +408,7 @@ def main():
     # Pre-calibration message
     pre_calibration_message_line1 = "Hello! Your eye-tracking calibration is about to begin."
     pre_calibration_message_line2 = "Please try to keep your head as still as possible and focus on the number in the centers of the dots."
-    countdown = 10
+    countdown = 1
 
     # Display pre-calibration message with countdown
     for i in range(countdown, -1, -1):
@@ -486,17 +520,17 @@ def main():
         # Create threads
         t1 = threading.Thread(target=face_and_blink_detection, args=(frame, gray, shared_state, detector, predictor, overlay))
         t2 = threading.Thread(target=pose_estimation_and_shake_nod_detection, args=(frame, shared_state, fa, overlay))
-        t3 = threading.Thread(target=eye_tracking, args=(frame, eye_gestures, screen_width, screen_height, shared_state.is_eyetracking))
+        # t3 = threading.Thread(target=eye_tracking, args=(frame, eye_gestures, screen_width, screen_height, shared_state.is_eyetracking))
 
         # Start threads
         t1.start()
         t2.start()
-        t3.start()
+        # t3.start()
 
         # Wait for threads to finish
         t1.join()
         t2.join()
-        t3.join()
+        # t3.join()
 
 
         # Process PyQt events

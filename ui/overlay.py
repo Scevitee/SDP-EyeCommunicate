@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import QGraphicsColorizeEffect
 
 from .art_program.art_canvas import ArtWidget
 from .tts.virtual_keyboard import AlphaNeumericVirtualKeyboard as VKeyboard
+from .tts.autocomplete import ShadowAutoCompleteLineEdit, get_common_words_with_frequencies
 
 class Overlay(QWidget):
     # Define signals
@@ -62,7 +63,7 @@ class Overlay(QWidget):
                                       '<b>Shake Head</b> (left, right) to Adjust Sensitivity<br><br>'
                                       '<b>Look Left</b> to Change Page in the <b>Left</b> direction<br><br>'
                                       '<b>Look Right</b> to Change Page in the <b>Right</b> direction<br><br>'
-                                      '<b>Raise Eyebrow</b> to Press Enter<br><br><br>')
+                                      '<b>Raise Eyebrow</b> to Press Enter on element highlighted in green<br><br><br>')
         self.instructions_label.setStyleSheet("color: rgba(255, 255, 255, 200); font-size: 14px;")
         self.instructions_label.setTextFormat(Qt.RichText)
         self.instructions_label.setAlignment(Qt.AlignCenter)
@@ -562,8 +563,11 @@ class KeyboardWidget(QWidget):
         layout.setSpacing(5)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        # Create a QLineEdit for text input
-        self.text_entry = QLineEdit(self)
+        # Create the word frequency dictionary for autocomplete
+        self.word_frequencies = get_common_words_with_frequencies()
+
+        # Replace QLineEdit with ShadowAutoCompleteLineEdit for text input
+        self.text_entry = ShadowAutoCompleteLineEdit(self.word_frequencies, self)
         self.text_entry.setPlaceholderText("Click to type...")
         self.text_entry.setStyleSheet("""
             QLineEdit {
@@ -574,28 +578,30 @@ class KeyboardWidget(QWidget):
                 color: #ECEFF4;
             }
         """)
-        self.text_entry.setFixedHeight(40)
+        self.text_entry.setFixedHeight(60)
         layout.addWidget(self.text_entry)
 
         # Add the virtual keyboard in a horizontally centered container
         keyboard_container = QWidget(self)
         keyboard_layout = QHBoxLayout(keyboard_container)
-        keyboard_layout.setContentsMargins(0, 0, 0, 0)
+        keyboard_layout.setContentsMargins(2, 2, 2, 2)
         keyboard_layout.setAlignment(Qt.AlignHCenter)
 
         # Embed the virtual keyboard
         self.virtual_keyboard = VKeyboard(self.text_entry)
         self.virtual_keyboard.setParent(keyboard_container)
-        self.virtual_keyboard.setFixedSize(800, 315)  # Adjust to ensure it fits correctly
+        self.virtual_keyboard.setFixedSize(600, 315)  # Adjust to ensure it fits correctly
         self.virtual_keyboard.hide()
         keyboard_layout.addWidget(self.virtual_keyboard)
 
         layout.addWidget(keyboard_container)
         self.setLayout(layout)
 
-        # Connect the QLineEdit mouse press event to show the keyboard
+        # Connect the ShadowAutoCompleteLineEdit mouse press event to show the keyboard
         self.text_entry.mousePressEvent = self.show_virtual_keyboard
 
+        # Track if the keyboard is open
+        self.is_keyboard_open = False
 
     def show_virtual_keyboard(self, event):
         """Show the virtual keyboard directly below the text entry box."""
@@ -612,6 +618,8 @@ class KeyboardWidget(QWidget):
 
             # Show the keyboard
             self.virtual_keyboard.show()
+            self.is_keyboard_open = True
+            self.virtual_keyboard.set_button_hover('q')
         else:
             self.virtual_keyboard.hide()
 
