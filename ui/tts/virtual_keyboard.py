@@ -473,6 +473,10 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
 
     def simulate_key_press(self, key):
         """Simulate pressing a key by finding and triggering its button"""
+        if key == 'Backspace':
+            self.backspace()
+            return
+
         for lineIndex, line in enumerate(self.array_buttons):
             for keyIndex, button in enumerate(line):
                 if button and button.text() == key:
@@ -480,8 +484,7 @@ class AlphaNeumericVirtualKeyboard(QtWidgets.QWidget):
                     # button.set_hover_state(True)
                     # Trigger the key's signal
                     button.key_button_clicked_signal.emit(key)
-                    # Optional: reset hover state after a short time
-                    # You might want to use a QTimer for this
+
                     return True
         return False
 
