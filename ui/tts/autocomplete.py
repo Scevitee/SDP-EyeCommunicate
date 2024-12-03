@@ -6,7 +6,7 @@ from PyQt5.QtGui import QColor, QPainter, QFontMetrics
 from PyQt5.QtCore import Qt
 
 # Ensure required datasets are downloaded
-# nltk.download('brown')
+nltk.download('brown')
 
 # Generate the 1500 most common words with initial frequencies
 def get_common_words_with_frequencies():
@@ -17,7 +17,7 @@ def get_common_words_with_frequencies():
     word_frequencies = Counter(words)
 
     # Get the 1500 most common words
-    common_words = word_frequencies.most_common(1500)
+    common_words = word_frequencies.most_common(2000)
 
     # Return as a dictionary: {'word': frequency}
     return {word.lower(): freq for word, freq in common_words}
@@ -73,7 +73,7 @@ class ShadowAutoCompleteLineEdit(QLineEdit):
             base_text = text[:text.rfind(last_word)] + last_word
             base_text_width = font_metrics.horizontalAdvance(base_text)  # Width of the current text
 
-            x = base_text_width + 8  # Small padding to avoid overlap
+            x = base_text_width + 10  # Small padding to avoid overlap
             y = (self.height() + font_metrics.ascent() - font_metrics.descent()) // 2
 
             # Draw only the portion of the suggestion that hasn't been typed yet
@@ -97,6 +97,17 @@ class ShadowAutoCompleteLineEdit(QLineEdit):
         else:
             super().keyPressEvent(event)
             self.updateSuggestion()
+
+    def acceptSuggestion(self):
+        # print("A")
+        if self.suggestion:
+            # Append the suggestion to the last word
+            text = self.text()
+            words = text.split()
+            if words:
+                words[-1] += self.suggestion  # Complete the last word
+                self.setText(" ".join(words))
+                self.suggestion = ""
 
 class AutoCompleteApp(QWidget):
     def __init__(self):

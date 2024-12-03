@@ -308,20 +308,24 @@ def pose_estimation_and_shake_nod_detection(frame, shared_state, fa, overlay, co
             elif shake_detected:
                 print("SHAKE DETECTED")   
                 if overlay.keyboard_widget.is_keyboard_open:
-                    continue 
-                shared_state.current_sensitivity = (shared_state.current_sensitivity + 1) % 3
-                shared_state.setSensitivity(shared_state.current_sensitivity)
-                message = f"Sensitivity: {['Low', 'Medium', 'High'][shared_state.current_sensitivity]}"
-                overlay.notification_signal.emit(message)
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                    # overlay.keyboard_widget.acceptAutocompleteSuggestion()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
+                else:
+                    shared_state.current_sensitivity = (shared_state.current_sensitivity + 1) % 3
+                    shared_state.setSensitivity(shared_state.current_sensitivity)
+                    message = f"Sensitivity: {['Low', 'Medium', 'High'][shared_state.current_sensitivity]}"
+                    overlay.notification_signal.emit(message)
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
             
             elif nod_detected:
                 print("NOD DETECTED")
                 if overlay.keyboard_widget.is_keyboard_open:
-                    continue
-                overlay.toggle_pin_signal.emit()
-                overlay.notification_signal.emit("Toggled pin")
-                shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
+                    overlay.keyboard_widget.speak_text()
+                    shared_state.universal_buffer_frames = shared_state.KEYBOARD_BUFFER_DURATION
+                else:
+                    overlay.toggle_pin_signal.emit()
+                    overlay.notification_signal.emit("Toggled pin")
+                    shared_state.universal_buffer_frames = shared_state.UNIVERSAL_BUFFER_DURATION
 
     # Decrease the universal buffer frames
     if shared_state.universal_buffer_frames > 0:

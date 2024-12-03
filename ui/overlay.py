@@ -6,11 +6,12 @@ from PyQt5.QtWidgets import (
     QApplication, QStackedWidget, QSizePolicy, QSpacerItem, QStyleFactory, QLineEdit, QGraphicsDropShadowEffect
 )
 from PyQt5.QtGui import QPainter, QColor, QIcon, QPixmap, QCursor, QMouseEvent
-from PyQt5.QtWidgets import QGraphicsColorizeEffect
+from PyQt5.QtWidgets import QGraphicsColorizeEffect, QMessageBox
 
 from .art_program.art_canvas import ArtWidget
 from .tts.virtual_keyboard import AlphaNeumericVirtualKeyboard as VKeyboard
 from .tts.autocomplete import ShadowAutoCompleteLineEdit, get_common_words_with_frequencies
+from .tts.tts_main import TTSEngine  # Import TTSEngine
 
 class Overlay(QWidget):
     # Define signals
@@ -23,6 +24,8 @@ class Overlay(QWidget):
 
     def __init__(self):
         super().__init__()
+
+        self.tts_engine = TTSEngine()
 
         # Define initial size dimensions
         self.default_size = (1500, 1500)
@@ -558,6 +561,7 @@ class KeyboardWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.tts_engine = TTSEngine()
         # Main layout for the keyboard widget
         layout = QVBoxLayout(self)
         layout.setSpacing(5)
@@ -565,20 +569,42 @@ class KeyboardWidget(QWidget):
 
         # Create the word frequency dictionary for autocomplete
         self.word_frequencies = get_common_words_with_frequencies()
+             # Create the 'Speak' button
+        self.speak_button = QPushButton(self)
+        speak_icon = QIcon("assets/speak_icon.png")  # Adjust the path to your icon
+        self.speak_button.setIcon(speak_icon)
+        self.speak_button.setIconSize(QSize(140, 140))  # Adjust icon size if needed
+        self.speak_button.clicked.connect(self.speak_text)
+
+        # Style the button to be circular
+        self.speak_button.setFixedSize(160, 160)  # Adjust size as needed
+        self.speak_button.setStyleSheet("""
+            QPushButton {
+                border-radius: 65px;  /* Half of the width and height */
+                background-color: #4c566a;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #596787;
+            }
+        """)
+
+        layout.addWidget(self.speak_button, alignment=Qt.AlignCenter)
+
 
         # Replace QLineEdit with ShadowAutoCompleteLineEdit for text input
-        self.text_entry = ShadowAutoCompleteLineEdit(self.word_frequencies, self)
+        self.text_entry = ShadowAutoCompleteLineEdit(self.word_frequencies)
         self.text_entry.setPlaceholderText("Click to type...")
         self.text_entry.setStyleSheet("""
             QLineEdit {
                 font-size: 18px;
                 padding: 5px;
-                border: 1px solid #4c566a;
+                border: 2px solid #4c566a;
                 border-radius: 5px;
                 color: #ECEFF4;
             }
         """)
-        self.text_entry.setFixedHeight(60)
+        self.text_entry.setFixedHeight(120)
         layout.addWidget(self.text_entry)
 
         # Add the virtual keyboard in a horizontally centered container
@@ -590,7 +616,7 @@ class KeyboardWidget(QWidget):
         # Embed the virtual keyboard
         self.virtual_keyboard = VKeyboard(self.text_entry)
         self.virtual_keyboard.setParent(keyboard_container)
-        self.virtual_keyboard.setFixedSize(600, 315)  # Adjust to ensure it fits correctly
+        self.virtual_keyboard.setFixedSize(800, 415)  # Adjust to ensure it fits correctly
         self.virtual_keyboard.hide()
         keyboard_layout.addWidget(self.virtual_keyboard)
 
@@ -602,6 +628,15 @@ class KeyboardWidget(QWidget):
 
         # Track if the keyboard is open
         self.is_keyboard_open = False
+        
+        
+    def speak_text(self):
+        text = self.text_entry.text()
+        if text:
+            self.tts_engine.speak(text)
+        else:
+            QMessageBox.warning(self, "No message", "Please enter text to speak.")
+        
 
     def show_virtual_keyboard(self, event):
         """Show the virtual keyboard directly below the text entry box."""
@@ -622,6 +657,11 @@ class KeyboardWidget(QWidget):
             self.virtual_keyboard.set_button_hover('q')
         else:
             self.virtual_keyboard.hide()
+
+    def acceptAutocompleteSuggestion(self):
+        self.text_entry.acceptSuggestion()
+        
+        
 
 class SettingsWidget(QWidget):
     def __init__(self, parent=None):
