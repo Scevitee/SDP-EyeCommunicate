@@ -1,78 +1,122 @@
-# SDP-EyeCommunicate
-Application Suite Utilizing Eye-Tracking and Facial Gestures
+
+
+<div align="center">
+    <img src="assets/eyecomm.png" alt="EyeCommunicate Logo" width="250" height="250">
+</div>
+
+# EyeCommunicate
+
+
+## <a id="about-the-project"></a> 🚀 About the Project
+**EyeCommunicate** is an innovative application that demonstrates the power of **eye tracking** and **facial gestures** as input devices. With EyeCommunicate, users can control their cursor using eye movements and trigger various application hotkeys through facial gestures—making hands-free interaction more accessible.
 
 ---
 
+## 📚 Table of Contents
+1. [About the Project](#about-the-project)
+2. [Available Commands](#available-commands)
+3. [Setup Instructions](#setup-instructions)
+   - [Windows Users](#windows-users)
+   - [Linux/Mac Users](#linuxmac-users-todo)
+4. [Features](#features)
 
-For development, create a virtual environment using `venv` or `conda`, I use venv
+## <a id="available-commands"></a> 🎯 Available Commands
+- **Look Left** → Change page left  
+- **Look Right** → Change page right  
+- **Look Up** → Increase window size  
+- **Look Down** → Decrease window size  
+- **Shake Head** → Change gesture detection sensitivity  
+- **Nod Head** → Pin window  
+- **Raise Eyebrows** → Enter  
+- **Hold Blink** → *TBD*  
 
-```python3.11 -m venv env```
+---
+## <a id="setup-instructions"></a> 🔧 Setup Instructions
+EyeCommunicate is designed to work with **Python 3.9**. Follow these steps to set up the application:
 
-(Package I used for a test is incompatible with latest Python version, hence the Python3.11)
+1. Create a virtual environment:
+   ```bash
+   python3.9 -m venv env
+   ```
+2. Install the required dependencies:
+   ```bash
+   pip3 install -r requirements.txt
+   ```
 
-Access your virtual environment.  
+### ⚠️ Operating System Note
+Setup instructions may vary depending on your operating system:
+### **Windows Users**
+   
+   #### **1. Install Python 3.9**
+   - **Download Python 3.9**
+      - Visit the [official Python website](https://www.python.org/downloads/release/python-390/).
+      - Download the **Windows Installer** for Python 3.9
 
-```source env/bin/activate```  
+   - **Run the Installer**
+      - Execute the download installer
+      - **Important:** During installation, **check the box** that says **"Add Python to PATH"**.
+      - Click **"Install Now"** and follow the on-screen instructions.
 
-If on Windows, run the following
+   #### **2. Clone the EyeCommunicate Repository**
+   - **Install Git (if not already installed):**
+      - Download Git from the [official website](https://git-scm.com/download/win).
+      - Run the installer and follow the installation prompts.
 
-```source env/Scripts/activate```  
+   - **Clone the Repository:**
+      - Open **Command Prompt** or **PowerShell**.
+      - Navigate to your desired directory:
+         ```bash
+         cd path\to\your\desired\directory
+         ```
+      - Clone the repository:
+         ```bash
+         git clone https://github.com/Scevitee/SDP-EyeCommunicate.git
+         ```
 
-Install the current requirements
+   #### **3. Create a Virtual Environment**
+   - Refer to the [Setup Instructions](#setup-instructions) section above.
 
-```pip install -r requirements.txt```
+   #### **4. Activate the Virtual Environment**
+   - Using Command Prompt:
+      ```  
+      env\Scripts\activate
+      ```
+   - Using Powershell:
+      ```
+      source env/Scripts/activate
+      ```
+   - **Important:** Once activated, ensure the virtual environment is using python 3.9 by running the following:
+      ```
+      python --version
+      ```
 
-Update requirements.txt if you install any additional packages
+   #### **5. Install the Required Dependencies for Windows:**
+   - Ensure `pip` is up-to-date and install dependencies:
+      ```
+      python -m pip install --upgrade pip
+      pip install -r requirements_windows.txt
+      ```
 
-```pip freeze > requirements.txt```
+   #### **6. Run the Application:**
+   - From the root directory of the project, run:
+      ```
+      python main.py
+      ```
 
-Good practice is to NOT commit your environment files, so I've added env/ to our .gitignore file
+   #### **7. Deactivate the Application**
+   - When finished, deactive the virtual environment from your terminal:
+      ```
+      deactivate
+      ```
+### **Linux/Mac Users**: TODO.
 
 ---
 
-Please work on your own branch. To cover our bases, I've added some basic stuff about version control just so we're all on the same page. 
+## <a id="features"></a> 🌟 Features
+- **Hands-Free Interaction**: Use your eyes and facial gestures for seamless control.
+- **Customizable Sensitivity**: Adjust the gesture detection sensitivity to your needs.
 
-Create branch / change branches
 
-```git checkout -b <branch-name>```
+---
 
-Sync with remote regularly 
-
-```git push origin <branch-name>```
-
-Pull and rebase regularly
-```
-git fetch origin
-git checkout main
-git pull origin main
-```
-
-After pulling, rebase your branch
-```
-git checkout <branch-name>
-git rebase main
-```
-
-Merge your branch
-```
-git checkout main
-git pull origin main
-git merge <branch-name>
-git push origin main
-```
-
-OPTIONAL: Delete branch
-```
-git branch -d <branch-name>
-git push origin --delete <branch-name>
-```
-
-Example workflow
-
-1. You pull the latest changes from the main branch, create a new branch (feature/user-authentication), and start working.
-
-2. You commit and push your changes regularly. You also pull updates from the main branch, rebase your branch, and resolve any conflicts.
-
-3. You open a pull request for your feature branch. After review and testing, the pull request is approved and merged.
-
-4. You delete the feature branch and start a new branch for the next task
+> _Empower interaction with just a glance!_

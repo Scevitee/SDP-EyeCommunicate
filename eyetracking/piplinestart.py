@@ -1,24 +1,51 @@
-# import the InferencePipeline interface
-from inference import InferencePipeline
-# import a modified version of 'render_boxes'
-from eyecoordinates import render_boxes_with_info
-# importing os module for environment variables
-import os
-# importing necessary functions from dotenv library
-from dotenv import load_dotenv, dotenv_values
-# loading variables from .env file
-load_dotenv()
+import cv2
+from eyegestures import EyeGestures_v2
+import pyautogui
 
-# create an inference pipeline object
-pipeline = InferencePipeline.init(
-    model_id="eye-tracking-2l0uc/5",  # set the model id to a yolov8x model with in put size 1280
-    video_reference=0,  # set the video reference (source of video), it can be a link/path to a video file, an RTSP stream url, or an integer representing a device id (usually 0 for built in webcams)
-    on_prediction=render_boxes_with_info,  # Use the modified version of 'render_boxes' to handle each set of inferences
-    api_key=os.getenv("API_KEY"),  # provide your roboflow api key for loading models from the roboflow api
-)
+def main():
+    eye_gestures = EyeGestures_v2(calibration_radius=1000)
+    cap = cv2.VideoCapture(0)  # Use the default webcam
 
-# start the pipeline
-pipeline.start()
+    # Retrieve screen dimensions
+    screen_width, screen_height = pyautogui.size()
 
-# wait for the pipeline to finish
-pipeline.join()
+    # Create a fullscreen window
+    window_name = "EyeGestures Test - Eye Coordinates"
+    cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to grab frame")
+            break
+
+        # Call the step method and unpack two returned objects
+        gevent, cevent = eye_gestures.step(
+            frame,
+            calibration=False,
+            width=screen_width,    
+            height=screen_height,  
+            context="main"
+        )
+
+        if gevent is not None:
+            gaze_point = gevent.point  # (x, y) coordinates
+
+            # Display the gaze point on the frame
+            cv2.circle(frame, (int(gaze_point[0]), int(gaze_point[1])), 10, (0, 255, 0), -1)
+            cv2.putText(frame, f"Gaze: ({int(gaze_point[0])}, {int(gaze_point[1])})",
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+        # Show the frame with annotations
+        cv2.imshow(window_name, frame)
+
+        # Exit on pressing 'q'
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
